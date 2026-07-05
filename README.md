@@ -1,8 +1,8 @@
 # CodexBar
 
-Pure-Swift macOS menu bar app combining the OpenCodex gateway and OpenCodexBar companion into one application.
+macOS menu bar app for **custom model and provider management** in Codex Desktop.
 
-CodexBar runs a local gateway on `http://127.0.0.1:8765` so Codex Desktop can route model requests through it, with a menu bar status indicator and dashboard.
+CodexBar runs a local gateway on `http://127.0.0.1:8765` so Codex can route requests to third-party APIs, with a native dashboard for installing providers, adding models, and syncing the Codex picker.
 
 ## Features
 
