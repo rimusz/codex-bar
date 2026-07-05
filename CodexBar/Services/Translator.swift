@@ -1,0 +1,330 @@
+import Foundation
+
+enum Translator {
+  private static let thinkPattern = try! NSRegularExpression(pattern: "<think>[\\s\\S]*?</think>", options: .caseInsensitive)
+
+  static func stripThink(_ text: String) -> String {
+    let range = NSRange(text.startIndex..., in: text)
+    return thinkPattern.stringByReplacingMatches(in: text, range: range, withTemplate: "")
+  }
+
+  static func extractNamespaceMap(tools: [[String: Any]]?) -> [String: String] {
+    guard let tools else { return [:] }
+    var map: [String: String] = [:]
+    for tool in tools {
+      guard (tool["type"] as? String) == "namespace" else { continue }
+      let namespace = tool["name"] as? String ?? ""
+      let funcs = (tool["functions"] as? [[String: Any]]) ?? (tool["tools"] as? [[String: Any]]) ?? []
+      for fn in funcs {
+        if let name = fn["name"] as? String, !name.isEmpty {
+          map[name] = namespace
+        }
+      }
+    }
+    return map
+  }
+
+  static func unflattenToolCall(name: String, namespaceMap: [String: String]) -> (String, String?) {
+    if let ns = namespaceMap[name] { return (name, ns) }
+    if name.contains("__") {
+      let parts = name.split(separator: "_", omittingEmptySubsequences: false).map(String.init)
+      if parts.count >= 3 {
+        let candidate = parts.dropFirst().joined(separator: "_")
+        if namespaceMap[candidate] != nil { return (candidate, namespaceMap[candidate]) }
+      }
+    }
+    return (name, nil)
+  }
+
+  static func responsesToChat(body: [String: Any], upstreamModel: String, sessionId: String?) -> [String: Any] {
+    var messages: [[String: Any]] = []
+    let system = contentToText(body["instructions"])
+    if !system.isEmpty { messages.append(["role": "system", "content": system]) }
+
+    let inputMessages = responsesInputToMessages(body["input"])
+    for var m in inputMessages {
+      if m["_reasoning_only"] as? Bool == true { continue }
+      m.removeValue(forKey: "_reasoning_only")
+      messages.append(m)
+    }
+
+    messages = mergeConsecutive(messages)
+    if messages.isEmpty { messages = [["role": "user", "content": " "]] }
+
+    var chat: [String: Any] = [
+      "model": upstreamModel,
+      "messages": messages,
+      "stream": body["stream"] as? Bool ?? true
+    ]
+    if chat["stream"] as? Bool == true {
+      chat["stream_options"] = ["include_usage": true]
+    }
+    if let maxOut = body["max_output_tokens"] { chat["max_tokens"] = maxOut }
+    if let tools = responsesToolsToChat(body["tools"] as? [[String: Any]]), !tools.isEmpty {
+      chat["tools"] = tools
+      if let tc = body["tool_choice"] { chat["tool_choice"] = tc }
+    }
+    return chat
+  }
+
+  static func chatCompletionToResponse(payload: [String: Any], requestedModel: String, namespaceMap: [String: String]) -> [String: Any] {
+    let choices = payload["choices"] as? [[String: Any]] ?? []
+    let choice = choices.first ?? [:]
+    let message = choice["message"] as? [String: Any] ?? [:]
+    var output: [[String: Any]] = []
+
+    if let reasoning = message["reasoning_content"] as? String, !reasoning.isEmpty {
+      output.append([
+        "id": "reasoning_0", "type": "reasoning", "status": "completed",
+        "summary": [["type": "summary_text", "text": reasoning]]
+      ])
+    }
+
+    let text = stripThink(message["content"] as? String ?? "")
+    if !text.isEmpty {
+      output.append([
+        "id": "msg_0", "type": "message", "status": "completed", "role": "assistant",
+        "content": [["type": "output_text", "text": text, "annotations": []]]
+      ])
+    }
+
+    for call in message["tool_calls"] as? [[String: Any]] ?? [] {
+      let fn = call["function"] as? [String: Any] ?? [:]
+      let name = fn["name"] as? String ?? ""
+      let (flatName, namespace) = unflattenToolCall(name: name, namespaceMap: namespaceMap)
+      var item: [String: Any] = [
+        "id": call["id"] ?? "call_0",
+        "type": "function_call",
+        "status": "completed",
+        "call_id": call["id"] ?? "call_0",
+        "name": flatName,
+        "arguments": fn["arguments"] ?? "{}"
+      ]
+      if let namespace { item["namespace"] = namespace }
+      output.append(item)
+    }
+
+    if output.isEmpty {
+      output.append([
+        "id": "msg_0", "type": "message", "status": "completed", "role": "assistant",
+        "content": [["type": "output_text", "text": " ", "annotations": []]]
+      ])
+    }
+
+    return [
+      "id": payload["id"] ?? "resp_chat",
+      "object": "response",
+      "created_at": payload["created"] ?? Int(Date().timeIntervalSince1970),
+      "status": "completed",
+      "model": requestedModel,
+      "output": output,
+      "usage": payload["usage"] as Any
+    ]
+  }
+
+  private static func contentToText(_ value: Any?) -> String {
+    if let s = value as? String { return s }
+    if let arr = value as? [[String: Any]] {
+      return arr.compactMap { part -> String? in
+        let type = (part["type"] as? String ?? "").lowercased()
+        if ["input_text", "output_text", "text"].contains(type) {
+          return part["text"] as? String
+        }
+        return nil
+      }.joined(separator: "\n")
+    }
+    return ""
+  }
+
+  private static func responsesInputToMessages(_ value: Any?) -> [[String: Any]] {
+    if let s = value as? String { return [["role": "user", "content": s]] }
+    guard let items = value as? [[String: Any]] else { return [] }
+    var messages: [[String: Any]] = []
+    var pendingTools: [[String: Any]] = []
+
+    for item in items {
+      let type = item["type"] as? String
+      if type == "message" || item["role"] != nil {
+        if !pendingTools.isEmpty {
+          messages.append(["role": "assistant", "content": NSNull(), "tool_calls": pendingTools])
+          pendingTools = []
+        }
+        var role = item["role"] as? String ?? "user"
+        if role == "developer" { role = "system" }
+        messages.append(["role": role, "content": contentToText(item["content"])])
+      } else if type == "function_call" {
+        pendingTools.append([
+          "id": item["call_id"] ?? item["id"] ?? "call",
+          "type": "function",
+          "function": [
+            "name": item["name"] ?? "",
+            "arguments": item["arguments"] ?? "{}"
+          ]
+        ])
+      } else if type == "function_call_output" {
+        if !pendingTools.isEmpty {
+          messages.append(["role": "assistant", "content": NSNull(), "tool_calls": pendingTools])
+          pendingTools = []
+        }
+        messages.append([
+          "role": "tool",
+          "tool_call_id": item["call_id"] ?? "",
+          "content": item["output"] as? String ?? String(describing: item["output"] ?? "")
+        ])
+      } else if type == "reasoning" {
+        messages.append(["_reasoning_only": true, "summary": item["summary"] ?? []])
+      }
+    }
+    if !pendingTools.isEmpty {
+      messages.append(["role": "assistant", "content": NSNull(), "tool_calls": pendingTools])
+    }
+    return messages
+  }
+
+  private static func mergeConsecutive(_ messages: [[String: Any]]) -> [[String: Any]] {
+    var merged: [[String: Any]] = []
+    for m in messages {
+      if let last = merged.last,
+         (last["role"] as? String) == (m["role"] as? String),
+         (m["role"] as? String) != "tool",
+         last["tool_calls"] == nil, m["tool_calls"] == nil,
+         let a = last["content"] as? String, let b = m["content"] as? String {
+        var copy = last
+        copy["content"] = a + "\n" + b
+        merged[merged.count - 1] = copy
+      } else {
+        merged.append(m)
+      }
+    }
+    return merged
+  }
+
+  private static func responsesToolsToChat(_ tools: [[String: Any]]?) -> [[String: Any]]? {
+    guard let tools else { return nil }
+    var out: [[String: Any]] = []
+    for tool in tools {
+      if (tool["type"] as? String) == "function" {
+        out.append([
+          "type": "function",
+          "function": [
+            "name": tool["name"] ?? "",
+            "description": tool["description"] ?? "",
+            "parameters": tool["parameters"] ?? ["type": "object", "properties": [:]]
+          ]
+        ])
+      }
+    }
+    return out
+  }
+}
+
+final class ResponsesStreamState {
+  let responseId = "resp_\(UUID().uuidString.replacingOccurrences(of: "-", with: ""))"
+  private let messageItemId = "msg_\(UUID().uuidString.replacingOccurrences(of: "-", with: ""))"
+  private let model: String
+  private let namespaceMap: [String: String]
+  private var messageText = ""
+  private var messageOpened = false
+  private var messageClosed = false
+  private var sequence = 1
+  private var toolCalls: [Int: [String: Any]] = [:]
+  var onTextChunk: ((String) -> Void)?
+  var onTextDone: ((String) -> Void)?
+
+  init(model: String, namespaceMap: [String: String], onTextChunk: ((String) -> Void)? = nil, onTextDone: ((String) -> Void)? = nil) {
+    self.model = model
+    self.namespaceMap = namespaceMap
+    self.onTextChunk = onTextChunk
+    self.onTextDone = onTextDone
+  }
+
+  func start(write: ([String: Any]) -> Void) {
+    write(wrap(["type": "response.created", "response": response("in_progress")]))
+    write(wrap(["type": "response.in_progress", "response": response("in_progress")]))
+  }
+
+  func writeChatDelta(_ chunk: [String: Any], write: ([String: Any]) -> Void) {
+    let choice = (chunk["choices"] as? [[String: Any]])?.first ?? [:]
+    let delta = choice["delta"] as? [String: Any] ?? [:]
+    if let content = delta["content"] as? String, !content.isEmpty {
+      let filtered = Translator.stripThink(content)
+      if !filtered.isEmpty {
+        if !messageOpened { openMessage(write: write) }
+        messageText += filtered
+        onTextChunk?(filtered)
+        write(wrap([
+          "type": "response.output_text.delta",
+          "item_id": messageItemId,
+          "output_index": 0,
+          "content_index": 0,
+          "delta": filtered
+        ]))
+      }
+    }
+    for call in delta["tool_calls"] as? [[String: Any]] ?? [] {
+      let index = call["index"] as? Int ?? 0
+      var state = toolCalls[index] ?? [
+        "id": call["id"] ?? "call_\(index)",
+        "name": "",
+        "arguments": "",
+        "added": false,
+        "closed": false,
+        "output_index": toolCalls.count
+      ]
+      if let fn = call["function"] as? [String: Any] {
+        if let name = fn["name"] as? String { state["name"] = (state["name"] as? String ?? "") + name }
+        if let args = fn["arguments"] as? String { state["arguments"] = (state["arguments"] as? String ?? "") + args }
+      }
+      toolCalls[index] = state
+    }
+  }
+
+  func finish(write: ([String: Any]) -> Void, usage: [String: Any]? = nil) {
+    if !messageOpened { openMessage(write: write) }
+    if messageOpened && !messageClosed { closeMessage(write: write) }
+    onTextDone?(messageText)
+    let completed = response("completed", usage: usage)
+    write(wrap(["type": "response.completed", "response": completed]))
+    write(wrap(["type": "response.done", "response": completed]))
+  }
+
+  private func openMessage(write: ([String: Any]) -> Void) {
+    messageOpened = true
+    write(wrap([
+      "type": "response.output_item.added",
+      "output_index": 0,
+      "item": ["id": messageItemId, "type": "message", "status": "in_progress", "role": "assistant", "content": []]
+    ]))
+  }
+
+  private func closeMessage(write: ([String: Any]) -> Void) {
+    messageClosed = true
+    write(wrap([
+      "type": "response.output_item.done",
+      "output_index": 0,
+      "item": [
+        "id": messageItemId, "type": "message", "status": "completed", "role": "assistant",
+        "content": [["type": "output_text", "text": messageText, "annotations": []]]
+      ]
+    ]))
+  }
+
+  private func response(_ status: String, usage: [String: Any]? = nil) -> [String: Any] {
+    var resp: [String: Any] = [
+      "id": responseId,
+      "object": "response",
+      "status": status,
+      "model": model,
+      "output": []
+    ]
+    if let usage { resp["usage"] = usage }
+    return resp
+  }
+
+  private func wrap(_ payload: [String: Any]) -> [String: Any] {
+    var p = payload
+    p["sequence_number"] = sequence
+    sequence += 1
+    return p
+  }
+}

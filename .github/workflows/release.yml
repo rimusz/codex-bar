@@ -1,0 +1,110 @@
+name: Release
+
+on:
+  # push:
+  #   tags:
+  #     - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag override; must match VERSION (for example v0.1.1)'
+        required: false
+        default: ''
+
+env:
+  APP_NAME: CodexBar
+
+jobs:
+  build:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate release tag
+        id: validate
+        shell: bash
+        run: |
+          app_version="$(tr -d '[:space:]' < VERSION)"
+          default_tag="v${app_version}"
+          input_version="${{ github.event.inputs.version || '' }}"
+
+          if [ -n "$input_version" ]; then
+            case "$input_version" in
+              v*) tag_name="$input_version" ;;
+              *) tag_name="v${input_version}" ;;
+            esac
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            tag_name="$default_tag"
+          else
+            tag_name="${{ github.ref_name }}"
+          fi
+
+          if [ "$tag_name" != "$default_tag" ]; then
+            echo "::error::Release tag '$tag_name' does not match VERSION '$default_tag'. Update VERSION or use the matching tag."
+            exit 1
+          fi
+
+          echo "app_version=$app_version" >> "$GITHUB_OUTPUT"
+          echo "tag_name=$tag_name" >> "$GITHUB_OUTPUT"
+
+      - name: Build unsigned .app + DMG
+        run: |
+          make app
+          make dmg-package
+          test -x "dist/${{ env.APP_NAME }}.app/Contents/MacOS/${{ env.APP_NAME }}"
+
+      - name: Prepare versioned release assets
+        run: |
+          TAG="${{ steps.validate.outputs.tag_name }}"
+          ditto -c -k --keepParent "dist/${{ env.APP_NAME }}.app" "dist/${{ env.APP_NAME }}-${TAG}.app.zip"
+          cp "dist/${{ env.APP_NAME }}-macOS.dmg" "dist/${{ env.APP_NAME }}-${TAG}-macOS.dmg"
+
+      - name: Prepare release notes
+        id: notes
+        env:
+          RELEASE_TAG: ${{ steps.validate.outputs.tag_name }}
+        run: |
+          ZIP_NAME="${{ env.APP_NAME }}-${RELEASE_TAG}.app.zip"
+          DMG_NAME="${{ env.APP_NAME }}-${RELEASE_TAG}-macOS.dmg"
+          cat > release-body.txt <<EOF
+          ## Downloads
+
+          - \`${ZIP_NAME}\` — Unsigned build
+          - \`${DMG_NAME}\` — Unsigned DMG
+
+          ## How to bypass Gatekeeper protection (unsigned builds)
+
+          macOS may block unsigned apps.
+
+          **Quick ways to open:**
+
+          1. Right-click \`CodexBar.app\` (or the DMG) → **Open**
+          2. Terminal: \`xattr -cr ~/Applications/CodexBar.app\`
+          3. System Settings → Privacy & Security → "Open Anyway"
+
+          ---
+
+          For a signed + notarized release, use local \`make release RELEASE_TYPE=notarized\` (see BUILDING.md).
+          EOF
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          cat release-body.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release (published)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.validate.outputs.tag_name }}
+          name: ${{ steps.validate.outputs.tag_name }} (Unsigned)
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: ${{ steps.notes.outputs.body }}
+          overwrite_files: true
+          files: |
+            dist/${{ env.APP_NAME }}-${{ steps.validate.outputs.tag_name }}.app.zip
+            dist/${{ env.APP_NAME }}-${{ steps.validate.outputs.tag_name }}-macOS.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

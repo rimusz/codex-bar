@@ -1,0 +1,31 @@
+---
+description: Gateway and Codex Desktop integration — HTTP server, translation, config
+globs: CodexBar/Services/{GatewayServer,LoopbackHTTPServer,Translator,ModelCatalog,CodexConfig,CodexAppServer,Paths}.swift
+alwaysApply: false
+---
+
+# Gateway & Codex integration
+
+## Services
+
+- `GatewayServer` — HTTP routing on `127.0.0.1:8765`, third-party model proxy, OpenAI pass-through.
+- `LoopbackHTTPServer` — Network.framework HTTP server, SSE support.
+- `Translator` — Responses ↔ Chat Completions translation, namespace tool mapping, think-block stripping.
+- `ModelCatalog` — `~/.codexbar/custom_model_catalog.json` + `providers.json` (migrates from `~/.opencodex/`).
+- `CodexConfig` — managed blocks in `~/.codex/config.toml`.
+- `CodexAppServer` — locate Codex binary, restart Codex Desktop.
+
+## Config paths
+
+- `Paths.modelCatalog`, `Paths.providersConfig`, `Paths.codexConfig`, `Paths.codexAuth`
+- Gateway: `Paths.gatewayHost`:`Paths.gatewayPort` (default `127.0.0.1:8765`)
+
+## After changing these services
+
+Run `make test` and update `ARCHITECTURE.md`, `README.md` (if user-visible), and this rule or `codexbar-gateway` skill when integration contracts change.
+
+## Do not
+
+- Duplicate HTTP routing logic outside `GatewayServer`.
+- Write to `~/.codex/config.toml` outside `CodexConfig` managed blocks without good reason.
+- Re-enable WebSocket/voice endpoints without explicit user request.

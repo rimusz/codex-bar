@@ -1,0 +1,48 @@
+---
+description: Require documentation and test updates alongside code changes
+alwaysApply: true
+---
+
+# Documentation & tests (required)
+
+Any **code change** — new features, behavior changes, bug fixes, refactors that alter contracts, new config paths, notifications, build scripts, or gateway/Codex integration — must include **updated docs** and **tests** in the same work session. Do not leave documentation stale or ship untested logic.
+
+## Tests
+
+1. Run `make test` before finishing.
+2. Add or extend tests in `Tests/CodexBarTests/` for behavior you changed or introduced.
+3. Prefer extending an existing test file over creating a new harness (see `ARCHITECTURE.md` → Tests).
+4. Test pure logic (translation, config stripping, catalog parsing) without requiring a live Codex Desktop process when possible.
+5. Skip new tests only when the change is docs-only or a trivial comment/format with zero behavior change.
+
+### Live verification (gateway / menu bar)
+
+For **gateway or menu bar changes**, `make test` is not always enough — also smoke-test the running app:
+
+1. Rebuild and relaunch: `make run` (packaging + relaunch — `make build` alone does **not** refresh the running `.app`).
+2. Confirm gateway: `curl -s http://127.0.0.1:8765/health` returns `{"status":"ok",...}`.
+3. For menu bar changes: confirm the status icon and menu items behave as expected.
+
+## Documentation — what to update
+
+| Change type | Update |
+|-------------|--------|
+| New/changed gateway route, service, config path, notification | `ARCHITECTURE.md` (routes, source map, common tasks → files) |
+| User-visible capability or install/requirements | `README.md` |
+| Build, sign, notarize, release CI, scripts | `BUILDING.md` |
+| Gateway / Codex integration surface | `.cursor/skills/codexbar-gateway/SKILL.md`, `codex-gateway-integration.mdc` if needed |
+| Release/version/packaging behavior | `.cursor/skills/codexbar-release/SKILL.md` |
+| Dev workflow, make targets, testing | `.cursor/skills/codexbar-dev/SKILL.md` |
+| Agent entry / repo conventions | `AGENTS.md` |
+
+`ARCHITECTURE.md` is the canonical internal reference — keep it accurate when structure or data flow changes.
+
+## Definition of done
+
+- [ ] Code compiles (`make build` or `swift build`)
+- [ ] `make test` passes
+- [ ] Gateway/menu bar changes smoke-tested (`make run`, then `curl /health` or manual menu check)
+- [ ] Relevant docs updated (at minimum `ARCHITECTURE.md` for non-trivial app changes)
+- [ ] User-facing changes reflected in `README.md` when applicable
+
+Only commit when the user explicitly asks.

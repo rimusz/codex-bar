@@ -1,0 +1,25 @@
+---
+description: Swift and AppKit conventions for CodexBar
+globs: CodexBar/**/*.swift
+alwaysApply: false
+---
+
+# Swift / AppKit
+
+## Conventions
+
+- Match existing naming and file placement (`Services/` for gateway/config logic; top-level for app shell).
+- Cross-feature coordination via `NotificationCenter` (e.g. `CodexBarStatusChanged`).
+- Prefer extending existing types over new abstractions for one-off logic.
+
+## App shell
+
+- Menu bar only: `NSApplication.setActivationPolicy(.accessory)` in `main.swift`.
+- `StatusBarController` — menu bar icon via `CodexBrandIcon.mark()` with status dot fallback.
+- `AppDelegate` — starts/stops `GatewayServer`, wires health polling.
+
+## Avoid
+
+- Large refactors unrelated to the task.
+- Blocking the main thread for network calls — use `URLSession` async APIs.
+- Finishing with code-only diffs — update `ARCHITECTURE.md`, tests, and user docs per `docs-and-tests.mdc`.

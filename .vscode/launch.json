@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:codex-bar}",
+            "name": "Debug CodexBar",
+            "target": "CodexBar",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug CodexBar"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:codex-bar}",
+            "name": "Release CodexBar",
+            "target": "CodexBar",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release CodexBar"
+        }
+    ]
+}

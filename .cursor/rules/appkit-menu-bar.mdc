@@ -1,0 +1,26 @@
+---
+description: AppKit menu bar and app delegate patterns
+globs: CodexBar/{StatusBarController,AppDelegate,CodexBrandIcon,AppIconProvider}.swift
+alwaysApply: false
+---
+
+# AppKit menu bar
+
+## Status bar
+
+- Icon via `CodexBrandIcon.mark()` (template image from bundled `MenuBarIcon` assets); fallback to drawn status dot.
+- Status states: `AppStatus` (idle, loading, error, offline) with accessibility labels.
+- Menu header shows `CodexBar {AppVersion.display}`.
+- Actions: Dashboard (native window), Restart Codex, Quit.
+- Restart Codex from the menu must show confirmation before restarting Codex Desktop.
+- Reset Gateway Config lives in the Dashboard and must show confirmation before resetting and restarting Codex.
+
+## App delegate
+
+- `GatewayServer.shared.start()` on launch, `stop()` on terminate.
+- Health polling via `APIClient.fetchStatus()` every 5s.
+- Standard Edit menu for text fields.
+
+## After changing menu bar or delegate
+
+Run `make test` if logic changed; update `ARCHITECTURE.md` and `README.md` for user-visible behavior. See `docs-and-tests.mdc`.
