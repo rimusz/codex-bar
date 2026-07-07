@@ -208,8 +208,8 @@ final class ModelCatalogTests: XCTestCase {
     func testPrettyDisplayNamePrefixesProviderBrandClineStyle() {
         // Provider brand prefixed (Cline style), with parentheticals trimmed.
         XCTAssertEqual(
-            ModelCatalog.prettyDisplayName(from: "composer-2.5", providerID: "cursor"),
-            "Cursor Composer 2.5"
+            ModelCatalog.prettyDisplayName(from: "glm-5.2", providerID: "zai"),
+            "Z.ai GLM 5.2"
         )
         XCTAssertEqual(
             ModelCatalog.prettyDisplayName(from: "grok-4.3", providerID: "xai"),
@@ -232,16 +232,16 @@ final class ModelCatalogTests: XCTestCase {
     func testNormalizeDisplayNamesLeavesCustomizedNamesAndBrandsAutoOnes() {
         // Raw id → branded name.
         let raw = CatalogModel(
-            slug: "cursor/composer-2.5", model: "composer-2.5",
-            provider: "cursor", backend_provider: "cursor",
-            display_name: "composer-2.5", visibility: "list",
+            slug: "xai/grok-4.3", model: "grok-4.3",
+            provider: "xai", backend_provider: "xai",
+            display_name: "grok-4.3", visibility: "list",
             input_modalities: nil, vision_bridge_enabled: nil, context_window: nil
         )
         // Previously auto-generated (unbranded) name → upgraded to branded.
         let unbranded = CatalogModel(
-            slug: "cursor/composer-2.5", model: "composer-2.5",
-            provider: "cursor", backend_provider: "cursor",
-            display_name: "Composer 2.5", visibility: "list",
+            slug: "xai/grok-4.3", model: "grok-4.3",
+            provider: "xai", backend_provider: "xai",
+            display_name: "Grok 4.3", visibility: "list",
             input_modalities: nil, vision_bridge_enabled: nil, context_window: nil
         )
         // User-customized name → preserved.
@@ -251,8 +251,8 @@ final class ModelCatalogTests: XCTestCase {
             display_name: "My Grok", visibility: "list",
             input_modalities: nil, vision_bridge_enabled: nil, context_window: nil
         )
-        XCTAssertEqual(ModelCatalog.normalizedDisplayName(for: raw), "Cursor Composer 2.5")
-        XCTAssertEqual(ModelCatalog.normalizedDisplayName(for: unbranded), "Cursor Composer 2.5")
+        XCTAssertEqual(ModelCatalog.normalizedDisplayName(for: raw), "xAI Grok 4.3")
+        XCTAssertEqual(ModelCatalog.normalizedDisplayName(for: unbranded), "xAI Grok 4.3")
         XCTAssertEqual(ModelCatalog.normalizedDisplayName(for: customized), "My Grok")
     }
 

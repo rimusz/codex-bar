@@ -69,6 +69,16 @@ enum StatusBarMenuCopy {
   }
 }
 
+/// Pure restart-gating logic, extracted so it can be unit-tested without
+/// constructing a `StatusBarController` (whose AppKit status item needs a
+/// window-server connection unavailable on headless CI runners).
+enum RestartCodexGate {
+  static func restartIfConfirmed(confirm: () -> Bool, restart: () -> Void) {
+    guard confirm() else { return }
+    restart()
+  }
+}
+
 class StatusBarController: NSObject {
   private let statusItem: NSStatusItem
   private let apiClient: APIClient
@@ -341,8 +351,7 @@ class StatusBarController: NSObject {
     }
 
     func restartCodexIfConfirmed(confirm: () -> Bool = RestartCodexConfirmation.confirm) {
-        guard confirm() else { return }
-        apiClient.restartCodex()
+        RestartCodexGate.restartIfConfirmed(confirm: confirm, restart: apiClient.restartCodex)
     }
 
     @objc private func quit() {

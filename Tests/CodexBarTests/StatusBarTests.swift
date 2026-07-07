@@ -10,14 +10,13 @@ final class StatusBarTests: XCTestCase {
     }
 
     func testRestartCodexRequiresConfirmation() {
-        let apiClient = MockAPIClient()
-        let controller = StatusBarController(apiClient: apiClient)
+        var restartCount = 0
 
-        controller.restartCodexIfConfirmed { false }
-        XCTAssertEqual(apiClient.restartCount, 0)
+        RestartCodexGate.restartIfConfirmed(confirm: { false }, restart: { restartCount += 1 })
+        XCTAssertEqual(restartCount, 0)
 
-        controller.restartCodexIfConfirmed { true }
-        XCTAssertEqual(apiClient.restartCount, 1)
+        RestartCodexGate.restartIfConfirmed(confirm: { true }, restart: { restartCount += 1 })
+        XCTAssertEqual(restartCount, 1)
     }
 
     func testRestartConfirmationCopyMentionsCodexDesktop() {
@@ -52,13 +51,5 @@ final class StatusBarTests: XCTestCase {
     func testGatewayStatusTitleDefaultsToConfiguredAddress() {
         let title = StatusBarMenuCopy.gatewayStatusTitle(.idle)
         XCTAssertTrue(title.contains("\(Paths.gatewayHost):\(Paths.gatewayPort)"))
-    }
-}
-
-private final class MockAPIClient: APIClient {
-    var restartCount = 0
-
-    override func restartCodex() {
-        restartCount += 1
     }
 }
