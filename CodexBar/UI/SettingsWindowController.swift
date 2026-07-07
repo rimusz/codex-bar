@@ -30,18 +30,22 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     newWindow.contentViewController = hosting
     newWindow.setFrameAutosaveName("CodexBarSettingsWindow")
     newWindow.minSize = NSSize(width: 620, height: 520)
+    newWindow.hidesOnDeactivate = false
     window = newWindow
     present(newWindow)
   }
 
   private func present(_ window: NSWindow) {
     NSApp.setActivationPolicy(.regular)
-    NSApp.activate()
+    NSApp.activate(ignoringOtherApps: true)
+    NSRunningApplication.current.activate(options: [.activateAllWindows])
     if window.frame.size.width < 620 || window.frame.size.height < 520 {
       window.setContentSize(NSSize(width: 680, height: 640))
       window.center()
     }
+    window.collectionBehavior.insert(.moveToActiveSpace)
     window.makeKeyAndOrderFront(nil)
+    window.orderFrontRegardless()
   }
 
   func windowWillClose(_ notification: Notification) {
