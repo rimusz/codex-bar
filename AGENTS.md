@@ -1,6 +1,6 @@
 # CodexBar
 
-Pure-Swift macOS menu-bar app with an embedded OpenCodex gateway for Codex Desktop.
+Pure-Swift macOS menu-bar app with an embedded gateway for Codex Desktop.
 
 ## Read first
 
@@ -34,9 +34,10 @@ When changing gateway or Codex integration:
 Every code change must ship with **updated documentation** and **tests** in the same session — not as a follow-up.
 
 1. **Tests** — run `make test`; add or extend `Tests/CodexBarTests/` for new or changed behavior.
-2. **ARCHITECTURE.md** — update for new services, routes, config paths, or flows.
-3. **README.md** — update for user-visible features or install/requirements changes.
-4. **BUILDING.md** — update for build, release, packaging, or script changes.
-5. **Skills / rules** — update `.cursor/skills/` or `.cursor/rules/` when workflows change.
+2. **Live verification** — for gateway changes, `make run` then `curl /health`. For Settings / menu bar / Codex Desktop UI changes, verify live with **Computer Use** (`grokbuild-computer-use` MCP, or the `orca computer` CLI fallback) instead of asking the user for screenshots.
+3. **ARCHITECTURE.md** — update for new services, routes, config paths, or flows.
+4. **README.md** — update for user-visible features or install/requirements changes.
+5. **BUILDING.md** — update for build, release, packaging, or script changes.
+6. **Skills / rules** — update `.cursor/skills/` or `.cursor/rules/` when workflows change.
 
 See `.cursor/rules/docs-and-tests.mdc` for the full checklist.

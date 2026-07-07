@@ -23,6 +23,23 @@ For **gateway or menu bar changes**, `make test` is not always enough — also s
 2. Confirm gateway: `curl -s http://127.0.0.1:8765/health` returns `{"status":"ok",...}`.
 3. For menu bar changes: confirm the status icon and menu items behave as expected.
 
+### Computer Use (test UI / Codex Desktop changes)
+
+Use **Computer Use** to verify anything that shows in the CodexBar Settings window, menu bar, or Codex Desktop itself (model picker, sign-in flow, config effects). Prefer it over asking the user for screenshots.
+
+Tooling, in order of preference:
+
+1. **`grokbuild-computer-use` MCP** (primary) — check the MCP first. Key tools: `computer_list_apps`, `computer_screenshot` (captures via **agent-desktop**), `computer_snapshot` (a11y tree + refs), `computer_click`/`computer_type`/`computer_press`, `computer_wait`. Read a tool's JSON schema before calling.
+2. **`orca computer …` CLI** (fallback) — e.g. `orca computer list-apps --json`, `get-app-state`, `click`. Requires the Orca app running first (`orca status --json`; otherwise returns `runtime_unavailable`).
+3. Both ultimately drive **agent-desktop**; if screenshots fail, check `computer_permissions` / `orca computer permissions` (Screen Recording, Accessibility).
+
+Practical notes for this repo:
+
+- Codex Desktop bundle id is `com.openai.codex`; restart it to reload config with `osascript -e 'tell application "Codex" to quit'` then `open -a Codex`.
+- Codex's **chat view is a GPU/canvas Electron surface** and does **not** expose an accessibility tree to `computer_snapshot` — use `computer_screenshot` for visual checks there. Native/onboarding screens do expose the tree.
+- There is no coordinate-click in the MCP; drive UI via snapshot `@refs`. Avoid `System Events` "click at" — it blocks on the Accessibility permission gate.
+- Custom models only appear in Codex's picker when signed in (free account is enough) — verify picker changes while signed in.
+
 ## Documentation — what to update
 
 | Change type | Update |
@@ -42,6 +59,7 @@ For **gateway or menu bar changes**, `make test` is not always enough — also s
 - [ ] Code compiles (`make build` or `swift build`)
 - [ ] `make test` passes
 - [ ] Gateway/menu bar changes smoke-tested (`make run`, then `curl /health` or manual menu check)
+- [ ] UI / Codex Desktop changes verified with Computer Use (`grokbuild-computer-use` MCP, or `orca computer` fallback)
 - [ ] Relevant docs updated (at minimum `ARCHITECTURE.md` for non-trivial app changes)
 - [ ] User-facing changes reflected in `README.md` when applicable
 

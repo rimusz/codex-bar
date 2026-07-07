@@ -12,8 +12,14 @@ final class GatewayServer {
     if !FileManager.default.fileExists(atPath: Paths.providersConfig) {
       try? ModelCatalog.shared.saveProviders(ModelCatalog.shared.loadProviders())
     }
-    ModelCatalog.shared.syncCodexCatalogExport()
-    CodexConfig.patchCodexConfig()
+    // Only keep Codex in sync if CodexBar was already applied to it. Never silently
+    // inject into a fresh/native Codex (e.g. after the user reinstalled Codex or
+    // deleted ~/.codex) — Settings' "Update Gateway Config" is the opt-in.
+    if CodexConfig.hasManagedBlock() {
+      ModelCatalog.shared.normalizeDisplayNames()
+      ModelCatalog.shared.syncCodexCatalogExport()
+      CodexConfig.patchCodexConfig()
+    }
 
     http.handler = { [weak self] request, response in
       self?.route(request, response)
@@ -38,79 +44,7 @@ final class GatewayServer {
     }
 
     if request.method == "GET" && path == "/health" {
-      json(response, ["status": "ok", "version": AppVersion.short, "opencodex": true])
-      return
-    }
-
-    if request.method == "GET" && (path == "/dashboard" || path == "/dashboard/") {
-      html(response, GatewayDashboard.html)
-      return
-    }
-
-    if request.method == "GET" && path == "/api/dashboard" {
-      handleDashboardGet(response)
-      return
-    }
-
-    if request.method == "POST" && path == "/api/providers" {
-      handleProviderPost(request, response)
-      return
-    }
-
-    if request.method == "DELETE" && path == "/api/providers" {
-      handleProviderDelete(request, response)
-      return
-    }
-
-    if request.method == "POST" && path == "/api/catalog" {
-      handleCatalogPost(request, response)
-      return
-    }
-
-    if request.method == "DELETE" && path == "/api/catalog" {
-      handleCatalogDelete(request, response)
-      return
-    }
-
-    if request.method == "GET" && path == "/api/presets" {
-      json(response, [
-        "presets": ProviderPreset.allCases.map { $0.toDashboardJSON() }
-      ])
-      return
-    }
-
-    if request.method == "POST" && path == "/api/presets/install" {
-      handlePresetInstall(request, response)
-      return
-    }
-
-    if request.method == "GET" && path == "/api/logs/stream" {
-      response.sendSSE { send in
-        let unsubscribe = SSELog.shared.subscribe(send)
-        DispatchQueue.global().asyncAfter(deadline: .now() + 3600) { unsubscribe() }
-      }
-      return
-    }
-
-    if request.method == "GET" && path == "/api/models" {
-      let catalog = ModelCatalog.shared.loadCatalog()
-      let active = catalog.models.filter { $0.visibility == "list" }.map { $0.slug }
-      json(response, [
-        "catalog": catalog.models.map { m in
-          [
-            "id": m.slug,
-            "model": m.model ?? m.slug,
-            "provider": m.provider ?? "",
-            "display_name": m.display_name ?? m.slug
-          ] as [String: Any]
-        },
-        "active": active
-      ])
-      return
-    }
-
-    if request.method == "POST" && path == "/api/config" {
-      handleConfigPost(request, response)
+      json(response, ["status": "ok", "version": AppVersion.short, "gateway": true])
       return
     }
 
@@ -120,29 +54,8 @@ final class GatewayServer {
       return
     }
 
-    if request.method == "POST" && path == "/api/reset" {
-      CodexConfig.resetToNative()
-      CodexAppServer.shared.restartCodexDesktop()
-      json(response, ["status": "success"])
-      return
-    }
-
     if request.method == "GET" && (path == "/v1/models" || path == "/v1/models/") {
       handleV1Models(response)
-      return
-    }
-
-    if request.method == "GET" && path == "/v1/config" {
-      let providers = ModelCatalog.shared.loadProviders()
-      json(response, [
-        "providers": providers.providers.map { p in
-          [
-            "name": p.name,
-            "base_url": p.base_url,
-            "api_key": p.api_key.isEmpty ? "" : String(p.api_key.prefix(8)) + "..."
-          ] as [String: Any]
-        }
-      ])
       return
     }
 
@@ -159,174 +72,6 @@ final class GatewayServer {
     json(response, ["error": "Endpoint not found"], status: 404)
   }
 
-  private func handleDashboardGet(_ response: HTTPResponse) {
-    let providers = ModelCatalog.shared.loadProviders().providers
-      .filter { !$0.name.isEmpty }
-      .map { provider in
-        [
-          "name": provider.name,
-          "display_name": provider.displayLabel,
-          "base_url": provider.base_url,
-          "api_key_set": !provider.api_key.isEmpty,
-          "vision_model": provider.vision_model as Any
-        ] as [String: Any]
-      }
-
-    let models = ModelCatalog.shared.loadCatalog().models.map { model in
-      [
-        "slug": model.slug,
-        "model": model.model ?? model.slug,
-        "provider": model.provider ?? "",
-        "backend_provider": model.backend_provider ?? "",
-        "display_name": model.display_name ?? model.slug,
-        "visibility": model.visibility ?? "list"
-      ] as [String: Any]
-    }
-
-    json(response, [
-      "providers": providers,
-      "models": models,
-      "catalog_path": Paths.modelCatalog,
-      "providers_path": Paths.providersConfig
-    ])
-  }
-
-  private func handleProviderPost(_ request: HTTPRequest, _ response: HTTPResponse) {
-    guard let body = parseJSON(request.body),
-          let provider = ModelCatalog.provider(from: body) else {
-      json(response, ["error": "Invalid provider: name and base_url are required"], status: 400)
-      return
-    }
-
-    do {
-      try ModelCatalog.shared.upsertProvider(provider)
-      CodexConfig.patchCodexConfig()
-      if body["restart"] as? Bool == true {
-        CodexAppServer.shared.restartCodexDesktop()
-      }
-      json(response, ["status": "success", "name": provider.name])
-    } catch {
-      json(response, ["error": error.localizedDescription], status: 500)
-    }
-  }
-
-  private func handleProviderDelete(_ request: HTTPRequest, _ response: HTTPResponse) {
-    guard let name = queryValue(request.query, key: "name"), !name.isEmpty else {
-      json(response, ["error": "Missing name query parameter"], status: 400)
-      return
-    }
-
-    do {
-      try ModelCatalog.shared.deleteProvider(name: name)
-      CodexConfig.patchCodexConfig()
-      json(response, ["status": "success", "deleted": name])
-    } catch let error as ModelCatalogError {
-      json(response, ["error": error.localizedDescription], status: 400)
-    } catch {
-      json(response, ["error": error.localizedDescription], status: 500)
-    }
-  }
-
-  private func handleCatalogPost(_ request: HTTPRequest, _ response: HTTPResponse) {
-    guard let body = parseJSON(request.body),
-          let model = ModelCatalog.catalogModel(from: body) else {
-      json(response, ["error": "Invalid model: slug and provider are required"], status: 400)
-      return
-    }
-
-    do {
-      try ModelCatalog.shared.upsertModel(model)
-      CodexConfig.patchCodexConfig()
-      if body["restart"] as? Bool == true {
-        CodexAppServer.shared.restartCodexDesktop()
-      }
-      json(response, ["status": "success", "slug": model.slug])
-    } catch {
-      json(response, ["error": error.localizedDescription], status: 500)
-    }
-  }
-
-  private func handleCatalogDelete(_ request: HTTPRequest, _ response: HTTPResponse) {
-    guard let slug = queryValue(request.query, key: "slug"), !slug.isEmpty else {
-      json(response, ["error": "Missing slug query parameter"], status: 400)
-      return
-    }
-
-    do {
-      try ModelCatalog.shared.deleteModel(slug: slug)
-      CodexConfig.patchCodexConfig()
-      json(response, ["status": "success", "deleted": slug])
-    } catch {
-      json(response, ["error": error.localizedDescription], status: 500)
-    }
-  }
-
-  private func handlePresetInstall(_ request: HTTPRequest, _ response: HTTPResponse) {
-    guard let body = parseJSON(request.body),
-          let presetID = body["preset"] as? String,
-          let preset = ProviderPreset.from(id: presetID) else {
-      json(response, ["error": "Invalid preset id"], status: 400)
-      return
-    }
-
-    let apiKey = body["api_key"] as? String ?? ""
-    if preset.requiresAPIKeyPrompt && apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-      json(response, ["error": "API key required for \(preset.displayName)"], status: 400)
-      return
-    }
-
-    do {
-      let result = try PresetInstaller.install(preset, apiKey: apiKey)
-      if body["restart"] as? Bool == true {
-        CodexAppServer.shared.restartCodexDesktop()
-      }
-      json(response, [
-        "status": "success",
-        "provider": result.provider,
-        "models": result.models,
-        "model_count": result.models.count
-      ])
-    } catch {
-      json(response, ["error": error.localizedDescription], status: 500)
-    }
-  }
-
-  private func queryValue(_ query: String, key: String) -> String? {
-    for part in query.split(separator: "&") {
-      let pieces = part.split(separator: "=", maxSplits: 1).map(String.init)
-      guard pieces.count == 2, pieces[0] == key else { continue }
-      return pieces[1].removingPercentEncoding
-    }
-    return nil
-  }
-
-  private func handleConfigPost(_ request: HTTPRequest, _ response: HTTPResponse) {
-    guard let body = parseJSON(request.body) else {
-      json(response, ["error": "Invalid JSON"], status: 400)
-      return
-    }
-    if let providers = body["providers"] as? [[String: Any]] {
-      var list: [ProviderConfig] = []
-      for p in providers {
-        if let provider = ModelCatalog.provider(from: p) {
-          list.append(provider)
-        }
-      }
-      try? ModelCatalog.shared.saveProviders(ProvidersFile(providers: list))
-    }
-    if let models = body["models"] as? [[String: Any]] {
-      for entry in models {
-        guard let model = ModelCatalog.catalogModel(from: entry) else { continue }
-        try? ModelCatalog.shared.upsertModel(model)
-      }
-    }
-    CodexConfig.patchCodexConfig()
-    if body["restart"] as? Bool == true {
-      CodexAppServer.shared.restartCodexDesktop()
-    }
-    json(response, ["status": "success", "restarted": body["restart"] as? Bool ?? false])
-  }
-
   private func handleV1Models(_ response: HTTPResponse) {
     let catalog = ModelCatalog.shared.loadCatalog()
     let data = ModelCatalog.codexPickerModels(from: catalog)
@@ -336,7 +81,7 @@ final class GatewayServer {
           "id": m.slug,
           "object": "model",
           "created": Int(Date().timeIntervalSince1970),
-          "owned_by": m.priority >= 100 ? "opencodex" : "openai"
+          "owned_by": m.priority >= 100 ? "codexbar" : "openai"
         ] as [String: Any]
       }
     json(response, ["object": "list", "data": data])
@@ -382,10 +127,20 @@ final class GatewayServer {
     if stream {
       streamThirdParty(urlRequest: urlRequest, requestedModel: requestedModel, namespaceMap: namespaceMap, response: response)
     } else {
-      URLSession.shared.dataTask(with: urlRequest) { data, _, error in
-        guard let data, error == nil,
-              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+      URLSession.shared.dataTask(with: urlRequest) { data, urlResponse, error in
+        let status = (urlResponse as? HTTPURLResponse)?.statusCode ?? 0
+        guard let data, error == nil else {
           self.json(response, ["error": error?.localizedDescription ?? "Upstream failed"], status: 502)
+          return
+        }
+        if status >= 400 {
+          let preview = String(data: data.prefix(400), encoding: .utf8) ?? "<binary>"
+          GatewayLog.error("Third-party \(requestedModel) -> \(url.absoluteString) status=\(status) preview=\(preview)")
+          self.json(response, GatewayServer.upstreamErrorPayload(status: status, bodyPreview: preview), status: status)
+          return
+        }
+        guard let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+          self.json(response, GatewayServer.upstreamErrorPayload(status: 502, bodyPreview: "Invalid upstream JSON"), status: 502)
           return
         }
         let translated = Translator.chatCompletionToResponse(payload: payload, requestedModel: requestedModel, namespaceMap: namespaceMap)
@@ -398,9 +153,16 @@ final class GatewayServer {
     let req = urlRequest
     let state = ResponsesStreamState(model: requestedModel, namespaceMap: namespaceMap)
 
-    URLSession.shared.dataTask(with: req) { data, _, error in
+    URLSession.shared.dataTask(with: req) { data, urlResponse, error in
+      let status = (urlResponse as? HTTPURLResponse)?.statusCode ?? 0
       guard let data, error == nil else {
         self.json(response, ["error": error?.localizedDescription ?? "stream failed"], status: 502)
+        return
+      }
+      if status >= 400 {
+        let preview = String(data: data.prefix(400), encoding: .utf8) ?? "<binary>"
+        GatewayLog.error("Third-party stream \(requestedModel) -> \(req.url?.absoluteString ?? "?") status=\(status) preview=\(preview)")
+        self.json(response, GatewayServer.upstreamErrorPayload(status: status, bodyPreview: preview), status: status)
         return
       }
       let text = String(data: data, encoding: .utf8) ?? ""
@@ -509,13 +271,21 @@ final class GatewayServer {
     return object as? [String: Any]
   }
 
+  /// Builds an OpenAI-style error payload so upstream provider failures (4xx/5xx)
+  /// surface back to Codex instead of being translated into an empty completion.
+  static func upstreamErrorPayload(status: Int, bodyPreview: String) -> [String: Any] {
+    [
+      "error": [
+        "message": "Upstream provider returned HTTP \(status): \(bodyPreview)",
+        "type": "upstream_error",
+        "code": status
+      ] as [String: Any]
+    ]
+  }
+
   private func json(_ response: HTTPResponse, _ object: [String: Any], status: Int = 200) {
     if let data = try? JSONSerialization.data(withJSONObject: object) {
       response.send(status: status, headers: ["Content-Type": "application/json"], body: data)
     }
-  }
-
-  private func html(_ response: HTTPResponse, _ html: String) {
-    response.send(status: 200, headers: ["Content-Type": "text/html; charset=utf-8"], body: Data(html.utf8))
   }
 }

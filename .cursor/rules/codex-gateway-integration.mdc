@@ -11,8 +11,9 @@ alwaysApply: false
 - `GatewayServer` — HTTP routing on `127.0.0.1:8765`, third-party model proxy, OpenAI pass-through.
 - `LoopbackHTTPServer` — Network.framework HTTP server, SSE support.
 - `Translator` — Responses ↔ Chat Completions translation, namespace tool mapping, think-block stripping.
-- `ModelCatalog` — `~/.codexbar/custom_model_catalog.json` + `providers.json` (migrates from `~/.opencodex/`).
-- `CodexConfig` — managed blocks in `~/.codex/config.toml`.
+- `ModelCatalog` — `~/.codexbar/custom_model_catalog.json` + `providers.json`.
+- `CodexConfig` — managed blocks in `~/.codex/config.toml` (markers `# >>> codexbar managed >>>`). `requires_openai_auth` on the `codexbar` provider is derived from `isSignedIn()` (auth.json): `false` when signed out so Codex skips login for local-only Ollama/custom use; `true` when signed in for native GPT/ChatGPT pass-through. Automatic callers (startup, auth watcher, restart) use `refreshManagedConfigIfApplied()` — they only re-patch when the block already exists, never injecting into a native Codex. Explicit apply is `patchCodexConfig()` via `SettingsStore.updateGatewayConfig` / add-model/provider actions.
+- `CodexAuthWatcher` — watches `~/.codex` for sign-in changes and re-patches config automatically; `restartCodexDesktop()` also re-patches before relaunch.
 - `CodexAppServer` — locate Codex binary, restart Codex Desktop.
 
 ## Config paths

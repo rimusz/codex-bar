@@ -172,4 +172,17 @@ final class LoopbackHTTPServerTests: XCTestCase {
         XCTAssertEqual(forwarded["authorization"], "Bearer token")
         XCTAssertEqual(forwarded["chatgpt-account-id"], "acct-123")
     }
+
+    func testUpstreamErrorPayloadSurfacesStatusAndBody() {
+        let payload = GatewayServer.upstreamErrorPayload(
+            status: 404,
+            bodyPreview: "Route POST:/v1/chat/completions not found"
+        )
+        let error = payload["error"] as? [String: Any]
+        XCTAssertEqual(error?["type"] as? String, "upstream_error")
+        XCTAssertEqual(error?["code"] as? Int, 404)
+        let message = error?["message"] as? String ?? ""
+        XCTAssertTrue(message.contains("404"))
+        XCTAssertTrue(message.contains("not found"))
+    }
 }

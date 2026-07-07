@@ -19,6 +19,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     Paths.prepare()
     GatewayServer.shared.start()
+    CodexAuthWatcher.shared.start()
     log("[App] Started embedded Swift gateway on :8765")
 
     try? "".write(toFile: logFile, atomically: true, encoding: .utf8)
@@ -49,11 +50,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
   @objc private func prepareForShutdown() {
     healthTimer?.invalidate()
+    CodexAuthWatcher.shared.stop()
     GatewayServer.shared.stop()
   }
 
   func applicationWillTerminate(_ notification: Notification) {
     healthTimer?.invalidate()
+    CodexAuthWatcher.shared.stop()
     GatewayServer.shared.stop()
     log("[App] Stopped embedded gateway")
   }

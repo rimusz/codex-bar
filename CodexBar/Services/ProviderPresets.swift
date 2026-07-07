@@ -1,6 +1,6 @@
 import Foundation
 
-/// Built-in OpenAI-compatible provider presets (aligned with grok-build-desktop).
+/// Built-in OpenAI-compatible provider presets.
 enum ProviderPreset: String, CaseIterable, Identifiable {
   case zai
   case kimi
@@ -9,6 +9,8 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
   case clinePass
   case minimax
   case deepseek
+  case xai
+  case openrouter
   case ollama
 
   var id: String { rawValue }
@@ -22,6 +24,8 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
     case .clinePass: return "Cline Pass"
     case .minimax: return "MiniMax"
     case .deepseek: return "DeepSeek"
+    case .xai: return "xAI (Grok)"
+    case .openrouter: return "OpenRouter"
     case .ollama: return "Ollama (local)"
     }
   }
@@ -35,6 +39,8 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
     case .clinePass: return "clinepass"
     case .minimax: return "minimax"
     case .deepseek: return "deepseek"
+    case .xai: return "xai"
+    case .openrouter: return "openrouter"
     case .ollama: return "ollama"
     }
   }
@@ -48,6 +54,8 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
     case .clinePass: return "https://api.cline.bot/api/v1"
     case .minimax: return "https://api.minimax.io/v1"
     case .deepseek: return "https://api.deepseek.com"
+    case .xai: return "https://api.x.ai/v1"
+    case .openrouter: return "https://openrouter.ai/api/v1"
     case .ollama: return "http://localhost:11434/v1"
     }
   }
@@ -74,6 +82,8 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
     case .xiaomiMiMo: return "mimo-v2.5-pro"
     case .minimax: return "minimax-m2.5"
     case .deepseek: return "deepseek-v4-pro"
+    case .xai: return "grok-4"
+    case .openrouter: return "openrouter/auto"
     case .ollama: return "llama3.2"
     case .clinePass: return nil
     }
@@ -137,17 +147,6 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
     }
   }
 
-  func toDashboardJSON() -> [String: Any] {
-    [
-      "id": rawValue,
-      "display_name": displayName,
-      "provider_id": providerID,
-      "base_url": baseURL,
-      "requires_api_key": requiresAPIKeyPrompt,
-      "model_count": catalogModels().count
-    ]
-  }
-
   private func defaultDisplayName(for model: String) -> String {
     switch self {
     case .zai: return "Z.ai GLM-5.2"
@@ -156,6 +155,8 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
     case .xiaomiMiMo: return "Xiaomi MiMo V2.5 Pro"
     case .minimax: return "MiniMax M2.5"
     case .deepseek: return "DeepSeek V4 Pro"
+    case .xai: return "xAI Grok 4"
+    case .openrouter: return "OpenRouter Auto"
     case .ollama: return "Ollama Llama 3.2"
     case .clinePass: return model
     }
@@ -178,7 +179,7 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
 
   /// Presets shown first in the menu bar (user-requested providers).
   static let featuredMenuOrder: [ProviderPreset] = [
-    .zai, .kimi, .qwen, .xiaomiMiMo, .clinePass, .minimax, .deepseek, .ollama
+    .zai, .kimi, .qwen, .xiaomiMiMo, .clinePass, .minimax, .deepseek, .xai, .openrouter, .ollama
   ]
 }
 

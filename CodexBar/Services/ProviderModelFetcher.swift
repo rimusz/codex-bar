@@ -42,7 +42,14 @@ enum ProviderModelFetcher {
   static func parse(_ data: Data) -> [FetchedModel]? {
     guard let object = try? JSONSerialization.jsonObject(with: data) else { return nil }
     let rawList: [Any]
+    // IDs to drop regardless of provider (e.g. Cursor's "default"/Auto meta-selector).
+    let skipIDs: Set<String> = ["default"]
     if let dict = object as? [String: Any], let list = dict["data"] as? [Any] {
+      rawList = list
+    } else if let dict = object as? [String: Any], let list = dict["items"] as? [Any] {
+      // Cursor `/models` returns `{ "items": [ { "id", "displayName", "variants", ... } ] }`.
+      // Variants are request-time params (effort/thinking/context/fast), not distinct model
+      // IDs, so we keep only the top-level `id` per item to produce a flat list.
       rawList = list
     } else if let list = object as? [Any] {
       rawList = list
@@ -58,6 +65,7 @@ enum ProviderModelFetcher {
       guard let id = identifier?.trimmingCharacters(in: .whitespacesAndNewlines), !id.isEmpty else {
         continue
       }
+      guard !skipIDs.contains(id.lowercased()) else { continue }
       guard seen.insert(id).inserted else { continue }
       models.append(FetchedModel(id: id, ownedBy: entry["owned_by"] as? String))
     }

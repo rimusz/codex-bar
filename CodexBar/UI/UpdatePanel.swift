@@ -12,7 +12,7 @@ enum UpdatePanel {
     app: Result<UpdateChecker.AppRelease, Error>,
     onDismiss: @escaping () -> Void
   ) {
-    NSApp.activate(ignoringOtherApps: true)
+    NSApp.activate()
 
     let panelHost = UpdatePanelHost(app: app, onDismiss: onDismiss)
     host = panelHost

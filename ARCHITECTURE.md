@@ -6,18 +6,18 @@
 
 ## What CodexBar is
 
-CodexBar is a **menu-bar macOS app** (AppKit) that runs an embedded **OpenCodex gateway** on `http://127.0.0.1:8765`. Codex Desktop routes model requests through it for third-party model translation and config management.
+CodexBar is a **menu-bar macOS app** (AppKit) that runs an embedded **gateway** on `http://127.0.0.1:8765`. Codex Desktop routes model requests through it for third-party model translation and config management.
 
 | CodexBar owns | Codex Desktop owns |
 |---------------|-------------------|
-| Loopback HTTP gateway (`/v1/responses`, `/health`, `/api/*`) | Chat UI, sessions, tool execution |
+| Loopback HTTP gateway (`/v1/*`, `/health`, `/api/restart-codex`) | Chat UI, sessions, tool execution |
 | Responses ↔ Chat Completions translation | Official OpenAI / ChatGPT pass-through usage |
 | `~/.codexbar/` catalog + providers | User auth (`~/.codex/auth.json`) |
 | `~/.codex/config.toml` managed block | Agent runtime |
-| Menu bar status + native dashboard window | |
+| Menu bar status + native settings window | |
 | In-app updates (notarized GitHub releases) | |
 
-**Platform:** macOS 14+. **Version:** `VERSION` → `AppVersion.display`. **Build:** SwiftPM only — no Xcode project; use `make` / `swift build`.
+**Platform:** macOS 26+. **Version:** `VERSION` → `AppVersion.display`. **Build:** SwiftPM only — no Xcode project; use `make` / `swift build`.
 
 ---
 
@@ -53,16 +53,16 @@ codex-bar/
 │   │   ├── UpdateChecker.swift    # GitHub release version check
 │   │   ├── UpdateScheduler.swift  # Background update polling
 │   │   ├── AppUpdater.swift       # Download, verify, install update
-│   │   ├── CodexConfig.swift     # config.toml managed blocks
-│   │   ├── CodexAppServer.swift  # Codex Desktop restart
+│   │   ├── CodexConfig.swift     # config.toml managed blocks (requires_openai_auth from sign-in)
+│   │   ├── CodexAuthWatcher.swift # watches ~/.codex for sign-in changes, re-patches config
+│   │   ├── CodexAppServer.swift  # Codex Desktop restart (re-patches config first)
 │   │   ├── APIClient.swift       # Health polling
-│   │   ├── GatewayDashboard.swift # HTML dashboard (debug)
 │   │   ├── Paths.swift
-│   │   └── SSELog.swift
+│   │   └── GatewayLog.swift
 │   ├── UI/
-│   │   ├── DashboardWindowController.swift
-│   │   ├── DashboardView.swift
-│   │   ├── DashboardStore.swift
+│   │   ├── SettingsWindowController.swift
+│   │   ├── SettingsView.swift
+│   │   ├── SettingsStore.swift
 │   │   └── UpdatePanel.swift
 │   └── Resources/Assets.xcassets/
 ├── Tests/CodexBarTests/
@@ -89,24 +89,12 @@ codex-bar/
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/health` | Status + version |
-| GET | `/dashboard` | HTML dashboard (debug fallback) |
-| GET | `/api/logs/stream` | SSE logs |
-| GET | `/api/dashboard` | Providers + catalog JSON for dashboard |
-| GET | `/api/models` | Catalog + active models |
-| POST | `/api/providers` | Upsert one provider |
-| DELETE | `/api/providers?name=…` | Delete provider (400 if catalog models still reference it) |
-| POST | `/api/catalog` | Upsert one catalog model |
-| DELETE | `/api/catalog?slug=…` | Delete catalog model |
-| GET | `/api/presets` | List available presets |
-| POST | `/api/presets/install` | Install built-in provider preset (provider only) |
-| POST | `/api/restart-codex` | Restart Codex Desktop |
-| POST | `/api/reset` | Reset gateway config |
+| POST | `/api/restart-codex` | Restart Codex Desktop (used by the menu) |
 | GET | `/v1/models` | OpenAI-compatible model list |
-| GET | `/v1/config` | Provider summary |
 | POST | `/v1/responses` | Responses API (translate or pass-through) |
 | POST | `/v1/chat/completions` | Chat completions proxy |
 
-WebSocket upgrades return 404 (voice removed).
+The gateway is intentionally minimal: only the routes Codex Desktop and the app itself call. Provider/model **management is done in-process** by the native Settings UI (`ModelCatalog` / `CodexConfig` directly) — there are **no HTTP mutation endpoints** and no browser dashboard, to avoid an unauthenticated local attack surface. The listener is **bound to loopback** (`NWParameters.requiredLocalEndpoint = 127.0.0.1:8765` in `LoopbackHTTPServer.start`), so it is never reachable from the LAN. WebSocket upgrades return 404 (voice removed).
 
 `LoopbackHTTPServer` waits for complete `Content-Length` and chunked bodies, decompresses `Content-Encoding: gzip` and `zstd` request bodies, and defers POST parsing when the body has not arrived yet. Codex Desktop sends large zstd-compressed JSON to `/v1/responses`. `HTTPRequest.forwardHeaders` strips `Content-Encoding` / `Content-Length` before upstream pass-through so decoded bodies are not double-decoded.
 
@@ -132,13 +120,12 @@ Install helper: `scripts/codexbar-install-update.sh` → bundled as `Contents/Re
 
 | Path | Purpose |
 |------|---------|
-| `~/.codexbar/custom_model_catalog.json` | CodexBar internal model catalog (routing metadata) |
-| `~/.codex/model-catalogs/custom-providers.json` | Codex-compatible picker export (`model_catalog_json`): native ChatGPT/Codex models plus custom entries |
-| `~/.codexbar/providers.json` | Provider credentials |
+| `~/.codexbar/custom_model_catalog.json` | CodexBar internal model catalog (routing metadata). Raw model ids get friendly display names via `ModelCatalog.prettyDisplayName` / `normalizeDisplayNames` (run on Settings reload + gateway startup; drops `vendor/model` prefixes, collapses doubled vendors, title-cases, and prefixes the provider brand Cline-style via `providerBrand`, e.g. "xAI Grok 4.3"); user-edited names are preserved. |
+| `~/.codex/model-catalogs/custom-providers.json` | Codex-compatible picker export (`model_catalog_json`): native ChatGPT/Codex models plus custom entries. **Codex only renders custom entries in its picker when signed in** (free account is enough); signed out it shows a built-in fallback list and labels any active custom model as "Custom". Settings surfaces a sign-in hint (`SettingsStore.customModelsNeedSignIn`) when custom models exist but `auth.json` is absent. |
+| `~/.codexbar/providers.json` | Provider endpoints + credentials. Read **live** by the gateway per request (`ModelCatalog.resolveUpstream`), so provider/preset changes take effect immediately — **no Codex restart** (only model changes require one; see `SettingsStore.requiresCodexRestart`). |
 | `~/.codexbar/fetched_models.json` | Cached `/models` lists per provider (updated on each fetch) |
-| `~/.opencodex/` | Legacy config dir; migrated once into `~/.codexbar/` on startup |
-| `~/.codex/config.toml` | Codex config (managed blocks patched) |
-| `~/.codex/auth.json` | Auth token for pass-through |
+| `~/.codex/config.toml` | Codex config (managed blocks patched). `[model_providers.codexbar].requires_openai_auth` is set from sign-in state: `false` when not signed in (skips Codex login — enables local-only Ollama/custom use), `true` when signed in (native GPT/ChatGPT pass-through). Automatic callers (startup, `CodexAuthWatcher`, restart) only **refresh** the block when it is already present (`refreshManagedConfigIfApplied`) — CodexBar never silently injects into a fresh/native Codex; Settings' **Update Gateway Config** is the explicit opt-in. |
+| `~/.codex/auth.json` | Auth token for pass-through; also read by `CodexConfig.isSignedIn()` to decide `requires_openai_auth`; watched by `CodexAuthWatcher` |
 
 ---
 
@@ -171,15 +158,14 @@ CI: `.github/workflows/pr.yml` (PR: `make test` + `make app`), `.github/workflow
 | Add gateway route | `GatewayServer.swift` |
 | Change translation logic | `Translator.swift` |
 | Model catalog / providers | `ModelCatalog.swift`, `ProviderPresets.swift`, `ProviderModelFetcher.swift`, `Paths.swift` |
-| Migrate legacy `~/.opencodex` config | `Paths.migrateLegacyConfigIfNeeded`, `Paths.prepare` |
-| Install provider preset | `PresetInstaller`, dashboard window (provider only; models fetched/added separately) |
-| Open dashboard | `DashboardWindowController`, menu **Dashboard** (⌘D) |
+| Install provider preset | `PresetInstaller`, Settings window (provider only; models fetched/added separately) |
+| Open Settings | `SettingsWindowController`, menu **Settings** (⌘,) |
 | Patch Codex config | `CodexConfig.swift` |
-| Reset gateway config | `DashboardView`, `DashboardStore.resetGatewayConfig`, `CodexConfig.resetToNative` |
-| Restart Codex Desktop | `CodexAppServer.swift` |
+| Reset/Update gateway config | `SettingsView` (label toggles on `SettingsStore.gatewayConfigInSync`), `SettingsStore.resetGatewayConfig` / `updateGatewayConfig`, `CodexConfig.resetToNative` (Codex-side only; keeps `~/.codexbar` data) |
+| Restart Codex Desktop | `CodexAppServer.swift`; menu **Restart Codex** (⌘R); Settings shows a **Restart Codex** button (`SettingsStore.needsCodexRestart` / `restartCodex`) after provider/model changes |
 | Menu bar UI | `StatusBarController.swift` |
+| Gateway status/port in menu | `StatusBarController` (disabled item), `StatusBarMenuCopy.gatewayStatusTitle`, address from `Paths.gatewayHost`/`gatewayPort` |
 | In-app updates | `UpdateChecker.swift`, `AppUpdater.swift`, `UpdateScheduler.swift`, `UpdatePanel.swift` |
-| Dashboard HTML | `GatewayDashboard.swift` |
 | Version display | `AppVersion.swift`, `VERSION` |
 | Packaging / signing | `scripts/build-macos-app.sh`, `BUILDING.md` |
 

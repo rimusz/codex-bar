@@ -26,10 +26,11 @@ xed .             # open Package.swift in Xcode (optional)
 
 1. **`make test`** — must pass; add tests in `Tests/CodexBarTests/` for behavior you changed.
 2. **Smoke test** — for gateway/menu bar changes: `make run`, then `curl -s http://127.0.0.1:8765/health`.
-3. **`ARCHITECTURE.md`** — update routes, source map, config paths, or common tasks → files when structure/flow changes.
-4. **`README.md`** — update when users would notice the change.
-5. **`BUILDING.md`** — update when build/packaging/scripts change.
-6. **Skills/rules** — update relevant `.cursor/skills/` or `.cursor/rules/` if workflow changed.
+3. **Computer Use** — for Settings / menu bar / Codex Desktop UI changes, verify live with the `grokbuild-computer-use` MCP (`computer_list_apps`, `computer_screenshot` via agent-desktop, `computer_snapshot`, `computer_click`); fall back to the `orca computer …` CLI (needs the Orca app running). Codex's chat view is an Electron canvas with no a11y tree — use screenshots there; restart Codex with `osascript … quit` + `open -a Codex`.
+4. **`ARCHITECTURE.md`** — update routes, source map, config paths, or common tasks → files when structure/flow changes.
+5. **`README.md`** — update when users would notice the change.
+6. **`BUILDING.md`** — update when build/packaging/scripts change.
+7. **Skills/rules** — update relevant `.cursor/skills/` or `.cursor/rules/` if workflow changed.
 
 Full checklist: `.cursor/rules/docs-and-tests.mdc`.
 

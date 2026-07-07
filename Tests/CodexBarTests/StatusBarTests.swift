@@ -30,6 +30,29 @@ final class StatusBarTests: XCTestCase {
         XCTAssertEqual(StatusBarMenuCopy.updateMenuTitle(hasActionableUpdate: false), "Check for Updates…")
         XCTAssertEqual(StatusBarMenuCopy.updateMenuTitle(hasActionableUpdate: true), "Upgrade Available…")
     }
+
+    func testGatewayStateLabelForEachStatus() {
+        XCTAssertEqual(StatusBarMenuCopy.gatewayStateLabel(.idle), "Running")
+        XCTAssertEqual(StatusBarMenuCopy.gatewayStateLabel(.loading), "Starting…")
+        XCTAssertEqual(StatusBarMenuCopy.gatewayStateLabel(.error), "Error")
+        XCTAssertEqual(StatusBarMenuCopy.gatewayStateLabel(.offline), "Offline")
+    }
+
+    func testGatewayStatusTitleIncludesStateAndAddress() {
+        XCTAssertEqual(
+            StatusBarMenuCopy.gatewayStatusTitle(.idle, host: "127.0.0.1", port: 8765),
+            "Gateway: Running · 127.0.0.1:8765"
+        )
+        XCTAssertEqual(
+            StatusBarMenuCopy.gatewayStatusTitle(.offline, host: "127.0.0.1", port: 8765),
+            "Gateway: Offline · 127.0.0.1:8765"
+        )
+    }
+
+    func testGatewayStatusTitleDefaultsToConfiguredAddress() {
+        let title = StatusBarMenuCopy.gatewayStatusTitle(.idle)
+        XCTAssertTrue(title.contains("\(Paths.gatewayHost):\(Paths.gatewayPort)"))
+    }
 }
 
 private final class MockAPIClient: APIClient {

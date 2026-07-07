@@ -89,6 +89,11 @@ final class CodexAppServer {
   }
 
   func restartCodexDesktop() {
+    // Re-sync the managed config first so `requires_openai_auth` reflects the
+    // current Codex sign-in state before Codex reloads config.toml on relaunch.
+    // Guarded so a restart never re-injects into a native Codex (and so a reset
+    // isn't immediately undone).
+    CodexConfig.refreshManagedConfigIfApplied()
     let script = """
     tell application "Codex" to quit
   delay 1
