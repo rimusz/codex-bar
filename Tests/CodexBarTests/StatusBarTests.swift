@@ -10,14 +10,13 @@ final class StatusBarTests: XCTestCase {
     }
 
     func testRestartCodexRequiresConfirmation() {
-        let apiClient = MockAPIClient()
-        let controller = StatusBarController(apiClient: apiClient)
+        var restartCount = 0
 
-        controller.restartCodexIfConfirmed { false }
-        XCTAssertEqual(apiClient.restartCount, 0)
+        RestartCodexGate.restartIfConfirmed(confirm: { false }, restart: { restartCount += 1 })
+        XCTAssertEqual(restartCount, 0)
 
-        controller.restartCodexIfConfirmed { true }
-        XCTAssertEqual(apiClient.restartCount, 1)
+        RestartCodexGate.restartIfConfirmed(confirm: { true }, restart: { restartCount += 1 })
+        XCTAssertEqual(restartCount, 1)
     }
 
     func testRestartConfirmationCopyMentionsCodexDesktop() {
@@ -30,12 +29,27 @@ final class StatusBarTests: XCTestCase {
         XCTAssertEqual(StatusBarMenuCopy.updateMenuTitle(hasActionableUpdate: false), "Check for Updates…")
         XCTAssertEqual(StatusBarMenuCopy.updateMenuTitle(hasActionableUpdate: true), "Upgrade Available…")
     }
-}
 
-private final class MockAPIClient: APIClient {
-    var restartCount = 0
+    func testGatewayStateLabelForEachStatus() {
+        XCTAssertEqual(StatusBarMenuCopy.gatewayStateLabel(.idle), "Running")
+        XCTAssertEqual(StatusBarMenuCopy.gatewayStateLabel(.loading), "Starting…")
+        XCTAssertEqual(StatusBarMenuCopy.gatewayStateLabel(.error), "Error")
+        XCTAssertEqual(StatusBarMenuCopy.gatewayStateLabel(.offline), "Offline")
+    }
 
-    override func restartCodex() {
-        restartCount += 1
+    func testGatewayStatusTitleIncludesStateAndAddress() {
+        XCTAssertEqual(
+            StatusBarMenuCopy.gatewayStatusTitle(.idle, host: "127.0.0.1", port: 8765),
+            "Gateway: Running · 127.0.0.1:8765"
+        )
+        XCTAssertEqual(
+            StatusBarMenuCopy.gatewayStatusTitle(.offline, host: "127.0.0.1", port: 8765),
+            "Gateway: Offline · 127.0.0.1:8765"
+        )
+    }
+
+    func testGatewayStatusTitleDefaultsToConfiguredAddress() {
+        let title = StatusBarMenuCopy.gatewayStatusTitle(.idle)
+        XCTAssertTrue(title.contains("\(Paths.gatewayHost):\(Paths.gatewayPort)"))
     }
 }

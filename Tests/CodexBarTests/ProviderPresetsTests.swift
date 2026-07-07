@@ -18,6 +18,28 @@ final class ProviderPresetsTests: XCTestCase {
         XCTAssertEqual(models.first?.display_name, "Cline GLM-5.2")
     }
 
+    func testXaiPresetDefinition() {
+        let preset = ProviderPreset.xai
+        XCTAssertEqual(preset.displayName, "xAI (Grok)")
+        XCTAssertEqual(preset.providerID, "xai")
+        XCTAssertEqual(preset.baseURL, "https://api.x.ai/v1")
+        XCTAssertEqual(preset.suggestedModel, "grok-4")
+        XCTAssertTrue(preset.requiresAPIKeyPrompt)
+        XCTAssertTrue(preset.supportsModelListingFetch)
+    }
+
+    func testOpenRouterPresetDefinition() {
+        let preset = ProviderPreset.openrouter
+        XCTAssertEqual(preset.displayName, "OpenRouter")
+        XCTAssertEqual(preset.providerID, "openrouter")
+        XCTAssertEqual(preset.baseURL, "https://openrouter.ai/api/v1")
+        XCTAssertEqual(preset.suggestedModel, "openrouter/auto")
+        let models = preset.catalogModels()
+        XCTAssertEqual(models.first?.provider, "openrouter")
+        XCTAssertEqual(models.first?.model, "openrouter/auto")
+        XCTAssertEqual(models.first?.slug, "openrouter/openrouter-auto")
+    }
+
     func testSlugPartSanitizesModelIDs() {
         XCTAssertEqual(ProviderPreset.slugPart(from: "cline-pass/glm-5.2"), "cline-pass-glm-5.2")
         XCTAssertEqual(ProviderPreset.slugPart(from: "kimi-k2.6"), "kimi-k2.6")
@@ -30,6 +52,8 @@ final class ProviderPresetsTests: XCTestCase {
         XCTAssertTrue(ids.contains("qwen"))
         XCTAssertTrue(ids.contains("xiaomiMiMo"))
         XCTAssertTrue(ids.contains("clinePass"))
+        XCTAssertTrue(ids.contains("xai"))
+        XCTAssertTrue(ids.contains("openrouter"))
     }
 
     func testOllamaDoesNotRequireAPIKeyPrompt() {

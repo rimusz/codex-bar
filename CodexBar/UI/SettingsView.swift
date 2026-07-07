@@ -1,7 +1,7 @@
 import SwiftUI
 
-struct DashboardView: View {
-  @ObservedObject var store: DashboardStore
+struct SettingsView: View {
+  @ObservedObject var store: SettingsStore
 
   @State private var showingProviderEditor = false
   @State private var editingProvider: ProviderConfig?
@@ -46,6 +46,7 @@ struct DashboardView: View {
         .padding(.vertical, 2)
       }
 
+      signInHintSection
       presetSection
       addCustomProviderSection
       providersSection
@@ -54,7 +55,7 @@ struct DashboardView: View {
     }
     .formStyle(.grouped)
     .frame(minWidth: 620, minHeight: 520)
-    .navigationTitle("CodexBar Dashboard")
+    .navigationTitle("CodexBar Settings")
     .toolbar { toolbar }
     .onAppear { store.reload() }
     .safeAreaInset(edge: .bottom) { statusBar }
@@ -91,16 +92,24 @@ struct DashboardView: View {
       Text("This removes the model from the Codex catalog.")
     }
     .confirmationDialog(
-      "Reset gateway config?",
+      store.gatewayConfigInSync ? "Reset Codex configuration?" : "Update Codex configuration?",
       isPresented: $showingResetConfirmation,
       titleVisibility: .visible
     ) {
-      Button("Reset and Restart Codex", role: .destructive) {
-        store.resetGatewayConfig()
+      if store.gatewayConfigInSync {
+        Button("Reset and Restart Codex", role: .destructive) {
+          store.resetGatewayConfig()
+        }
+      } else {
+        Button("Update and Restart Codex") {
+          store.updateGatewayConfig()
+        }
       }
       Button("Cancel", role: .cancel) {}
     } message: {
-      Text("This removes CodexBar's managed gateway settings and custom model catalog entries, then restarts Codex so it returns to native configuration.")
+      Text(store.gatewayConfigInSync
+        ? "Removes CodexBar's managed settings from Codex's own config so Codex returns to its native configuration, then restarts Codex. Your CodexBar providers and models are not deleted."
+        : "Writes your current CodexBar providers and models into Codex's config, then restarts Codex.")
     }
   }
 
@@ -120,26 +129,62 @@ struct DashboardView: View {
 
   @ViewBuilder
   private var statusBar: some View {
-    if let status = store.statusMessage {
+    if store.statusMessage != nil || store.needsCodexRestart {
       HStack(spacing: 10) {
-        Image(systemName: "checkmark.circle.fill")
-          .foregroundStyle(.green)
-        Text(status)
-          .font(.callout)
-        Spacer()
-        Button {
-          store.statusMessage = nil
-        } label: {
-          Image(systemName: "xmark.circle.fill")
-            .foregroundStyle(.secondary)
+        if let status = store.statusMessage {
+          Image(systemName: "checkmark.circle.fill")
+            .foregroundStyle(.green)
+          Text(status)
+            .font(.callout)
         }
-        .buttonStyle(.plain)
+        Spacer()
+        if store.needsCodexRestart {
+          Button {
+            store.restartCodex()
+          } label: {
+            Label("Restart Codex", systemImage: "arrow.clockwise.circle")
+          }
+          .controlSize(.small)
+          .buttonStyle(.borderedProminent)
+          .help("Restart Codex Desktop so it reloads the updated providers and models")
+        }
+        if store.statusMessage != nil {
+          Button {
+            store.statusMessage = nil
+          } label: {
+            Image(systemName: "xmark.circle.fill")
+              .foregroundStyle(.secondary)
+          }
+          .buttonStyle(.plain)
+        }
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 10)
       .background(.ultraThinMaterial)
       .overlay(Divider(), alignment: .top)
       .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+  }
+
+  // MARK: - Sign-in hint
+
+  @ViewBuilder
+  private var signInHintSection: some View {
+    if store.customModelsNeedSignIn {
+      Section {
+        HStack(alignment: .top, spacing: 10) {
+          Image(systemName: "person.crop.circle.badge.exclamationmark")
+            .foregroundStyle(.orange)
+          VStack(alignment: .leading, spacing: 3) {
+            Text("Sign in to Codex to use custom models")
+              .font(.callout.weight(.semibold))
+            Text("Codex only lists custom models in its picker when you're signed in — a free account is enough. Native GPT models require an OpenAI/ChatGPT account.")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
+        }
+        .padding(.vertical, 2)
+      }
     }
   }
 
@@ -384,16 +429,28 @@ struct DashboardView: View {
     }
   }
 
+  @ViewBuilder
   private var resetSection: some View {
     Section {
-      Button(role: .destructive) {
-        showingResetConfirmation = true
-      } label: {
-        Label("Reset Gateway Config", systemImage: "exclamationmark.arrow.triangle.2.circlepath")
+      if store.gatewayConfigInSync {
+        Button(role: .destructive) {
+          showingResetConfirmation = true
+        } label: {
+          Label("Reset Gateway Config", systemImage: "exclamationmark.arrow.triangle.2.circlepath")
+        }
+        .help("Reset only Codex's config so it stops routing through CodexBar. Your CodexBar providers and models are kept.")
+      } else {
+        Button {
+          showingResetConfirmation = true
+        } label: {
+          Label("Update Gateway Config", systemImage: "arrow.triangle.2.circlepath")
+        }
+        .help("Apply your CodexBar providers and models to Codex's config and restart Codex.")
       }
-      .help("Remove CodexBar gateway settings and restart Codex")
     } footer: {
-      Text("Use this if you want Codex to stop routing through CodexBar. You will be asked to confirm because Codex will be restarted.")
+      Text(store.gatewayConfigInSync
+        ? "Resets only Codex's configuration so it stops routing through CodexBar. Your CodexBar providers and models stay saved. Codex will restart."
+        : "Codex's config is out of date with your CodexBar models. Update writes your current providers and models into Codex's config. Codex will restart.")
     }
   }
 
@@ -437,7 +494,7 @@ struct DashboardView: View {
           .foregroundStyle(.secondary)
 
         TextField("Display name", text: $providerDisplayName)
-        Text("Shown in the dashboard, e.g. \"MiniMax\" or \"Cline Pass\".")
+        Text("Shown in Settings, e.g. \"MiniMax\" or \"Cline Pass\".")
           .font(.caption)
           .foregroundStyle(.secondary)
 
@@ -827,7 +884,7 @@ struct DashboardView: View {
         model: fetchedModel.id,
         provider: provider.name,
         backend_provider: provider.name,
-        display_name: fetchedModel.id,
+        display_name: ModelCatalog.prettyDisplayName(from: fetchedModel.id, providerID: provider.name),
         visibility: "list",
         input_modalities: nil,
         vision_bridge_enabled: nil,

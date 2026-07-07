@@ -5,7 +5,7 @@ alwaysApply: true
 
 # CodexBar project
 
-SwiftPM macOS menu-bar app with embedded OpenCodex gateway for Codex Desktop.
+SwiftPM macOS menu-bar app with embedded gateway for Codex Desktop.
 
 ## Key facts
 

@@ -54,28 +54,6 @@ final class HTTPResponse {
     }
   }
 
-  func sendSSE(setup: @escaping (@escaping (String) -> Void) -> Void) {
-    queue.async {
-      guard !self.sent else { return }
-      self.sent = true
-      let headers = [
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        "Connection": "keep-alive"
-      ]
-      var headerLines = ["HTTP/1.1 200 OK"]
-      for (k, v) in headers { headerLines.append("\(k): \(v)") }
-      headerLines.append("\r\n")
-      let headerData = Data(headerLines.joined(separator: "\r\n").utf8)
-      self.connection.send(content: headerData, completion: .contentProcessed { _ in })
-      setup { chunk in
-        if let data = chunk.data(using: .utf8) {
-          self.connection.send(content: data, completion: .contentProcessed { _ in })
-        }
-      }
-    }
-  }
-
   func upgradeWebSocket(key: String, onSession: @escaping (WebSocketSession) -> Void) {
     queue.async {
       guard !self.sent else { return }
@@ -228,12 +206,18 @@ final class LoopbackHTTPServer {
   func start(host: String = Paths.gatewayHost, port: UInt16 = Paths.gatewayPort) throws {
     let params = NWParameters.tcp
     params.allowLocalEndpointReuse = true
-    listener = try NWListener(using: params, on: NWEndpoint.Port(rawValue: port)!)
+    // Pin the listener to the loopback address so the gateway is only reachable from
+    // this machine — never from the LAN. (A bare port would bind all interfaces.)
+    params.requiredLocalEndpoint = NWEndpoint.hostPort(
+      host: NWEndpoint.Host(host),
+      port: NWEndpoint.Port(rawValue: port)!
+    )
+    listener = try NWListener(using: params)
     listener?.newConnectionHandler = { [weak self] connection in
       self?.handle(connection)
     }
     listener?.start(queue: queue)
-    GatewayLog.info("Listening on http://\(host):\(port)")
+    GatewayLog.info("Listening on http://\(host):\(port) (loopback only)")
   }
 
   func stop() {

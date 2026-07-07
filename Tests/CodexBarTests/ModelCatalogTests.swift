@@ -186,6 +186,76 @@ final class ModelCatalogTests: XCTestCase {
         XCTAssertTrue(ModelCatalog.catalogModels(catalog, forProvider: "missing").isEmpty)
     }
 
+    func testPrettyDisplayNameFormatsCommonModelIDs() {
+        XCTAssertEqual(ModelCatalog.prettyDisplayName(from: "composer-2.5"), "Composer 2.5")
+        XCTAssertEqual(ModelCatalog.prettyDisplayName(from: "grok-4.3"), "Grok 4.3")
+        XCTAssertEqual(ModelCatalog.prettyDisplayName(from: "qwen3.7-max"), "Qwen3.7 Max")
+        XCTAssertEqual(ModelCatalog.prettyDisplayName(from: "minimax-m2.5"), "MiniMax M2.5")
+    }
+
+    func testPrettyDisplayNameDropsPathPrefixAndDoubledVendor() {
+        // Path prefix dropped and the doubled "deepseek" collapsed to one.
+        XCTAssertEqual(
+            ModelCatalog.prettyDisplayName(from: "deepseek/deepseek-chat-v3-0324"),
+            "DeepSeek Chat V3 0324"
+        )
+        XCTAssertEqual(
+            ModelCatalog.prettyDisplayName(from: "openrouter/deepseek-deepseek-chat-v3-0324"),
+            "DeepSeek Chat V3 0324"
+        )
+    }
+
+    func testPrettyDisplayNamePrefixesProviderBrandClineStyle() {
+        // Provider brand prefixed (Cline style), with parentheticals trimmed.
+        XCTAssertEqual(
+            ModelCatalog.prettyDisplayName(from: "glm-5.2", providerID: "zai"),
+            "Z.ai GLM 5.2"
+        )
+        XCTAssertEqual(
+            ModelCatalog.prettyDisplayName(from: "grok-4.3", providerID: "xai"),
+            "xAI Grok 4.3"
+        )
+        XCTAssertEqual(
+            ModelCatalog.prettyDisplayName(from: "deepseek/deepseek-chat-v3-0324", providerID: "openrouter"),
+            "OpenRouter DeepSeek Chat V3 0324"
+        )
+    }
+
+    func testPrettyDisplayNameAvoidsDoubleBrandWhenNameLeadsWithIt() {
+        // deepseek provider + a deepseek-* model should not become "DeepSeek DeepSeek …".
+        XCTAssertEqual(
+            ModelCatalog.prettyDisplayName(from: "deepseek-v4-pro", providerID: "deepseek"),
+            "DeepSeek V4 Pro"
+        )
+    }
+
+    func testNormalizeDisplayNamesLeavesCustomizedNamesAndBrandsAutoOnes() {
+        // Raw id → branded name.
+        let raw = CatalogModel(
+            slug: "xai/grok-4.3", model: "grok-4.3",
+            provider: "xai", backend_provider: "xai",
+            display_name: "grok-4.3", visibility: "list",
+            input_modalities: nil, vision_bridge_enabled: nil, context_window: nil
+        )
+        // Previously auto-generated (unbranded) name → upgraded to branded.
+        let unbranded = CatalogModel(
+            slug: "xai/grok-4.3", model: "grok-4.3",
+            provider: "xai", backend_provider: "xai",
+            display_name: "Grok 4.3", visibility: "list",
+            input_modalities: nil, vision_bridge_enabled: nil, context_window: nil
+        )
+        // User-customized name → preserved.
+        let customized = CatalogModel(
+            slug: "xai/grok-4.3", model: "grok-4.3",
+            provider: "xai", backend_provider: "xai",
+            display_name: "My Grok", visibility: "list",
+            input_modalities: nil, vision_bridge_enabled: nil, context_window: nil
+        )
+        XCTAssertEqual(ModelCatalog.normalizedDisplayName(for: raw), "xAI Grok 4.3")
+        XCTAssertEqual(ModelCatalog.normalizedDisplayName(for: unbranded), "xAI Grok 4.3")
+        XCTAssertEqual(ModelCatalog.normalizedDisplayName(for: customized), "My Grok")
+    }
+
     func testProviderHasInstalledModelsErrorDescription() {
         let error = ModelCatalogError.providerHasInstalledModels(name: "minimax", count: 2)
         XCTAssertEqual(

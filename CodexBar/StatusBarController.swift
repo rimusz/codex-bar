@@ -24,8 +24,8 @@ enum RestartCodexConfirmation {
         let shouldRestoreAccessory = NSApp.activationPolicy() == .accessory
           && !NSApp.windows.contains { $0.isVisible }
         NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
-        NSRunningApplication.current.activate(options: [.activateIgnoringOtherApps, .activateAllWindows])
+        NSApp.activate()
+        NSRunningApplication.current.activate(options: [.activateAllWindows])
 
         let alert = NSAlert()
         alert.messageText = title
@@ -48,6 +48,35 @@ enum StatusBarMenuCopy {
   static func updateMenuTitle(hasActionableUpdate: Bool) -> String {
     hasActionableUpdate ? "Upgrade Available…" : "Check for Updates…"
   }
+
+  /// Short label describing the gateway's health for the menu.
+  static func gatewayStateLabel(_ status: AppStatus) -> String {
+    switch status {
+    case .idle: return "Running"
+    case .loading: return "Starting…"
+    case .error: return "Error"
+    case .offline: return "Offline"
+    }
+  }
+
+  /// Menu line showing gateway health plus the loopback address it listens on.
+  static func gatewayStatusTitle(
+    _ status: AppStatus,
+    host: String = Paths.gatewayHost,
+    port: UInt16 = Paths.gatewayPort
+  ) -> String {
+    "Gateway: \(gatewayStateLabel(status)) · \(host):\(port)"
+  }
+}
+
+/// Pure restart-gating logic, extracted so it can be unit-tested without
+/// constructing a `StatusBarController` (whose AppKit status item needs a
+/// window-server connection unavailable on headless CI runners).
+enum RestartCodexGate {
+  static func restartIfConfirmed(confirm: () -> Bool, restart: () -> Void) {
+    guard confirm() else { return }
+    restart()
+  }
 }
 
 class StatusBarController: NSObject {
@@ -55,6 +84,7 @@ class StatusBarController: NSObject {
   private let apiClient: APIClient
   private var menu: NSMenu
   private var updateCheckItem: NSMenuItem?
+  private var gatewayStatusItem: NSMenuItem?
   private(set) var currentStatus: AppStatus = .idle
     private var animationTimer: Timer?
     private var frameIndex = 0
@@ -103,6 +133,7 @@ class StatusBarController: NSObject {
     func setStatus(_ status: AppStatus) {
         currentStatus = status
         updateIcon(for: status)
+        gatewayStatusItem?.title = StatusBarMenuCopy.gatewayStatusTitle(status)
 
         if status == .loading {
             startAnimation()
@@ -194,15 +225,24 @@ class StatusBarController: NSObject {
     }
 
     private func setupMenu() {
-        let titleItem = NSMenuItem(title: "CodexBar \(AppVersion.display)", action: nil, keyEquivalent: "")
-        titleItem.isEnabled = false
-        menu.addItem(titleItem)
+    let titleItem = NSMenuItem(title: "CodexBar \(AppVersion.display)", action: nil, keyEquivalent: "")
+    titleItem.isEnabled = false
+    menu.addItem(titleItem)
 
-        menu.addItem(.separator())
+    let gatewayItem = NSMenuItem(
+      title: StatusBarMenuCopy.gatewayStatusTitle(currentStatus),
+      action: nil,
+      keyEquivalent: ""
+    )
+    gatewayItem.isEnabled = false
+    gatewayStatusItem = gatewayItem
+    menu.addItem(gatewayItem)
 
-        let dashItem = NSMenuItem(title: "Dashboard", action: #selector(openDashboard), keyEquivalent: "d")
-        dashItem.target = self
-        menu.addItem(dashItem)
+    menu.addItem(.separator())
+
+    let settingsItem = NSMenuItem(title: "Settings", action: #selector(openSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
 
         menu.addItem(.separator())
 
@@ -298,9 +338,9 @@ class StatusBarController: NSObject {
     }
 #endif
 
-    @objc private func openDashboard() {
+    @objc private func openSettings() {
         DispatchQueue.main.async {
-            DashboardWindowController.shared.show()
+            SettingsWindowController.shared.show()
         }
     }
 
@@ -311,8 +351,7 @@ class StatusBarController: NSObject {
     }
 
     func restartCodexIfConfirmed(confirm: () -> Bool = RestartCodexConfirmation.confirm) {
-        guard confirm() else { return }
-        apiClient.restartCodex()
+        RestartCodexGate.restartIfConfirmed(confirm: confirm, restart: apiClient.restartCodex)
     }
 
     @objc private func quit() {
