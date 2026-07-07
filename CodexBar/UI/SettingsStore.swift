@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 extension ProviderConfig: Identifiable {
   var id: String { name }
