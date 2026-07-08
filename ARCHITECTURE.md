@@ -98,6 +98,12 @@ The gateway is intentionally minimal: only the routes Codex Desktop and the app 
 
 `LoopbackHTTPServer` waits for complete `Content-Length` and chunked bodies, decompresses `Content-Encoding: gzip` and `zstd` request bodies, and defers POST parsing when the body has not arrived yet. Codex Desktop sends large zstd-compressed JSON to `/v1/responses`. `HTTPRequest.forwardHeaders` strips `Content-Encoding` / `Content-Length` before upstream pass-through so decoded bodies are not double-decoded.
 
+### Other OpenAI-compatible clients (e.g. Zero)
+
+Any tool on the same Mac that speaks OpenAI Chat Completions can use `http://127.0.0.1:8765/v1` while CodexBar is running. Custom model slugs come from `GET /v1/models`; upstream provider keys are injected from `~/.codexbar/providers.json`. Native GPT pass-through uses `~/.codex/auth.json` when the client does not send `Authorization`.
+
+End-user setup (Zero TUI, CLI `zero exec`, provider profile, troubleshooting): **`README.md` → Using CodexBar with Zero**.
+
 ---
 
 ## In-app updates
@@ -163,6 +169,7 @@ CI: `.github/workflows/pr.yml` (PR: `make test` + `make app`), `.github/workflow
 | Patch Codex config | `CodexConfig.swift` |
 | Reset/Update gateway config | `SettingsView` (label toggles on `SettingsStore.gatewayConfigInSync`), `SettingsStore.resetGatewayConfig` / `updateGatewayConfig`, `CodexConfig.resetToNative` (Codex-side only; keeps `~/.codexbar` data) |
 | Restart Codex Desktop | `CodexAppServer.swift`; menu **Restart Codex** (⌘R); Settings shows a **Restart Codex** button (`SettingsStore.needsCodexRestart` / `restartCodex`) after provider/model changes |
+| Document third-party CLI use (Zero) | `README.md` → Using CodexBar with Zero; gateway base URL `Paths.gatewayHost`/`gatewayPort` |
 | Menu bar UI | `StatusBarController.swift` |
 | Gateway status/port in menu | `StatusBarController` (disabled item), `StatusBarMenuCopy.gatewayStatusTitle`, address from `Paths.gatewayHost`/`gatewayPort` |
 | In-app updates | `UpdateChecker.swift`, `AppUpdater.swift`, `UpdateScheduler.swift`, `UpdatePanel.swift` |
