@@ -53,6 +53,7 @@ codex-bar/
 │   │   ├── UpdateChecker.swift    # GitHub release version check
 │   │   ├── UpdateScheduler.swift  # Background update polling
 │   │   ├── AppUpdater.swift       # Download, verify, install update
+│   │   ├── UpdatePanelModel.swift # Update panel button/status decisions
 │   │   ├── CodexConfig.swift     # config.toml managed blocks (requires_openai_auth from sign-in)
 │   │   ├── CodexAuthWatcher.swift # watches ~/.codex for sign-in changes, re-patches config
 │   │   ├── CodexAppServer.swift  # Codex Desktop restart (re-patches config first)
@@ -116,7 +117,8 @@ CodexBar checks `https://api.github.com/repos/rimusz/codex-bar/releases` for the
 | `UpdateScheduler` | Launch + daily background check (30s delay, 24h interval) |
 | `UpdateChecker` | GitHub API, semver compare, asset `CodexBar-{tag}.app.zip` |
 | `AppUpdater` | Download, codesign/spctl verify, install via `codexbar-install-update` helper |
-| `UpdatePanel` | Menu **Check for Updates…** / **Upgrade Available…** (⌘U) |
+| `UpdatePanel` | Menu **Check for Updates…** / **Upgrade Available…** (⌘U); **Update App** → download/verify → **Install and Restart** |
+| `UpdatePanelModel` | Pure UI decisions (install button vs open release page; skip vs notify) |
 | `UpdateSettingsStore` | UserDefaults: auto-check, skip version, last check |
 
 Install helper: `scripts/codexbar-install-update.sh` → bundled as `Contents/Resources/codexbar-install-update`.

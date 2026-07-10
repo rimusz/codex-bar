@@ -12,9 +12,21 @@ enum UpdatePanel {
     app: Result<UpdateChecker.AppRelease, Error>,
     onDismiss: @escaping () -> Void
   ) {
-    NSApp.activate()
+    let shouldRestoreAccessory = NSApp.activationPolicy() == .accessory
+      && !NSApp.windows.contains { $0.isVisible }
+    NSApp.setActivationPolicy(.regular)
+    NSApp.activate(ignoringOtherApps: true)
+    NSRunningApplication.current.activate(options: [.activateAllWindows])
 
-    let panelHost = UpdatePanelHost(app: app, onDismiss: onDismiss)
+    let panelHost = UpdatePanelHost(
+      app: app,
+      onDismiss: {
+        if shouldRestoreAccessory {
+          NSApp.setActivationPolicy(.accessory)
+        }
+        onDismiss()
+      }
+    )
     host = panelHost
 
     let content = panelHost.presentation
@@ -27,11 +39,13 @@ enum UpdatePanel {
       panel.contentView = rootView
       panel.setContentSize(size)
       configureWindow(panel)
-      let delegate = PanelDelegate(onClose: cleanupAndDismiss(onDismiss: onDismiss))
+      let delegate = PanelDelegate(onClose: cleanupAndDismiss(onDismiss: panelHost.onDismiss))
       panel.delegate = delegate
       panelDelegate = delegate
       panel.center()
+      panel.collectionBehavior.insert(.moveToActiveSpace)
       panel.makeKeyAndOrderFront(nil)
+      panel.orderFrontRegardless()
       panelHost.attach(panel: panel)
       return
     }
@@ -48,12 +62,14 @@ enum UpdatePanel {
     window.hidesOnDeactivate = false
     configureWindow(window)
 
-    let delegate = PanelDelegate(onClose: cleanupAndDismiss(onDismiss: onDismiss))
+    let delegate = PanelDelegate(onClose: cleanupAndDismiss(onDismiss: panelHost.onDismiss))
     window.delegate = delegate
     panelDelegate = delegate
 
     window.center()
+    window.collectionBehavior.insert(.moveToActiveSpace)
     window.makeKeyAndOrderFront(nil)
+    window.orderFrontRegardless()
     panel = window
     panelHost.attach(panel: window)
   }
@@ -130,7 +146,7 @@ private final class UpdatePanelHost: NSObject {
   }
 
   private let app: Result<UpdateChecker.AppRelease, Error>
-  private let onDismiss: () -> Void
+  let onDismiss: () -> Void
   private var appPhaseObserver: NSObjectProtocol?
   private weak var panel: NSPanel?
 
@@ -324,6 +340,10 @@ private final class UpdatePanelHost: NSObject {
         NSWorkspace.shared.open(release.releaseURL)
         return
       }
+      // Manual install clears a prior "Skip This Version" for this release.
+      if UpdateSettingsStore.dismissedVersion == release.latestVersion {
+        UpdateSettingsStore.dismissedVersion = nil
+      }
       Task {
         await AppUpdater.shared.downloadAndVerify(release: release)
       }
@@ -357,21 +377,23 @@ private final class UpdatePanelHost: NSObject {
   }
 
   private static func makePresentation(app: Result<UpdateChecker.AppRelease, Error>) -> Presentation {
-    var appUpdateAvailable = false
-    var canInstallInApp = false
     var body = ""
+    let decision: UpdatePanelModel.Decision
 
     switch app {
     case .success(let release):
-      appUpdateAvailable = UpdateSettingsStore.shouldNotify(for: release)
-      canInstallInApp = release.canInstallInApp
+      let shouldNotify = UpdateSettingsStore.shouldNotify(for: release)
 #if DEBUG
-      if appUpdateAvailable,
-         UpdateDebugSimulator.isAppSimulationActive
-          || UpdateDebugSimulator.isSimulatedAppRelease(release) {
-        canInstallInApp = true
-      }
+      let forceInstall = UpdateDebugSimulator.isAppSimulationActive
+        || UpdateDebugSimulator.isSimulatedAppRelease(release)
+#else
+      let forceInstall = false
 #endif
+      decision = UpdatePanelModel.decision(
+        for: release,
+        shouldNotify: shouldNotify,
+        forceCanInstallInApp: forceInstall
+      )
 
       let installedAhead = UpdateChecker.compareVersions(
         release.installedVersion,
@@ -391,6 +413,7 @@ private final class UpdatePanelHost: NSObject {
       }
       body = lines.joined(separator: "\n")
     case .failure(let error):
+      decision = UpdatePanelModel.decision(forFailure: error)
       body = "Could not check for updates: \(error.localizedDescription)"
     }
 
@@ -401,13 +424,13 @@ private final class UpdatePanelHost: NSObject {
     var progressValue = 0.0
     var appPrimaryButtonTitle: String?
     var appPrimaryButtonEnabled = true
-    let appShowSkipButton = appUpdateAvailable
+    let appShowSkipButton = decision.showSkipButton
+    let appUpdateAvailable = decision.showsInstallAction
+    let canInstallInApp = decision.canInstallInApp
 
     switch appUpdater.phase {
     case .idle:
-      if appUpdateAvailable {
-        appPrimaryButtonTitle = canInstallInApp ? "Update App" : "Open Release Page"
-      }
+      appPrimaryButtonTitle = decision.primaryButtonTitleWhenIdle
     case .downloading(let progress):
       showProgress = true
       progressValue = progress
@@ -436,20 +459,8 @@ private final class UpdatePanelHost: NSObject {
       }
     }
 
-    let statusLine: String
-    if appUpdateAvailable {
-      statusLine = "Update Available"
-    } else if case .failure = app {
-      statusLine = "Could Not Check for Updates"
-    } else if case .success(let release) = app,
-              UpdateChecker.compareVersions(release.installedVersion, release.latestVersion) == .orderedDescending {
-      statusLine = "No Updates Available"
-    } else {
-      statusLine = "Everything Is Up to Date"
-    }
-
-    var bodyParts = [statusLine]
-    if !appUpdateAvailable, statusLine == "No Updates Available" {
+    var bodyParts = [decision.statusLine]
+    if !appUpdateAvailable, decision.statusLine == "No Updates Available" {
       bodyParts.append("Nothing to install right now.")
     }
     bodyParts.append(body)
@@ -458,7 +469,7 @@ private final class UpdatePanelHost: NSObject {
     }
 
     return Presentation(
-      statusLine: statusLine,
+      statusLine: decision.statusLine,
       body: bodyParts.joined(separator: "\n\n"),
       appUpdateAvailable: appUpdateAvailable,
       canInstallInApp: canInstallInApp,

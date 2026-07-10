@@ -127,7 +127,14 @@ The exported picker catalog always includes the native ChatGPT/Codex models, so 
 
 ## Updates
 
-Menu bar → **Check for Updates…** (⌘U) checks GitHub for a newer **notarized** release and can download and install it in one step. Unsigned CI releases are published for manual install only.
+Menu bar → **Check for Updates…** (⌘U) checks GitHub for a newer **notarized** release and can **download, verify, install, and relaunch** in one flow (same pattern as [GrokBuild Desktop](https://github.com/rimusz/grok-build-desktop)):
+
+1. **Update App** — downloads `CodexBar-{tag}.app.zip` and verifies the signature  
+2. **Install and Restart** — replaces the running app via the bundled `codexbar-install-update` helper and relaunches  
+
+Only **notarized** releases with a `.app.zip` asset are installable in-app. Unsigned CI releases are ignored (use the DMG from GitHub manually). If you previously chose **Skip This Version**, **Check for Updates…** still offers **Update App** so you can install later.
+
+Unsigned CI releases are published for manual install only.
 
 ## Using CodexBar with [Zero](https://zero.gitlawb.com)
 
