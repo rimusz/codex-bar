@@ -26,6 +26,9 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
       defer: false
     )
     newWindow.title = "CodexBar Settings"
+    // Programmatic NSWindows default to isReleasedWhenClosed = true, which over-releases
+    // the window while `window` still references it — reopening then crashes. Let ARC own it.
+    newWindow.isReleasedWhenClosed = false
     newWindow.delegate = self
     newWindow.contentViewController = hosting
     newWindow.setFrameAutosaveName("CodexBarSettingsWindow")
