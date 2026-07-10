@@ -79,12 +79,13 @@ enum RestartCodexGate {
   }
 }
 
-class StatusBarController: NSObject {
+class StatusBarController: NSObject, NSMenuDelegate {
   private let statusItem: NSStatusItem
   private let apiClient: APIClient
   private var menu: NSMenu
   private var updateCheckItem: NSMenuItem?
   private var gatewayStatusItem: NSMenuItem?
+  private var openAtLoginItem: NSMenuItem?
   private(set) var currentStatus: AppStatus = .idle
     private var animationTimer: Timer?
     private var frameIndex = 0
@@ -97,8 +98,10 @@ class StatusBarController: NSObject {
 
         setupStatusItem()
         setupMenu()
+        menu.delegate = self
         statusItem.menu = menu
         updateIcon(for: currentStatus)
+        refreshOpenAtLoginMenuItem()
 
         NotificationCenter.default.addObserver(
             self,
@@ -244,6 +247,15 @@ class StatusBarController: NSObject {
         settingsItem.target = self
         menu.addItem(settingsItem)
 
+        let openAtLoginItem = NSMenuItem(
+          title: OpenAtLoginMenuCopy.title,
+          action: #selector(toggleOpenAtLogin),
+          keyEquivalent: ""
+        )
+        openAtLoginItem.target = self
+        self.openAtLoginItem = openAtLoginItem
+        menu.addItem(openAtLoginItem)
+
         menu.addItem(.separator())
 
         let updateItem = NSMenuItem(
@@ -344,6 +356,40 @@ class StatusBarController: NSObject {
         }
     }
 
+    @objc private func toggleOpenAtLogin() {
+      DispatchQueue.main.async { [weak self] in
+        self?.applyOpenAtLoginToggle()
+      }
+    }
+
+    func applyOpenAtLoginToggle(
+      currentlyEnabled: Bool = OpenAtLogin.isEnabled,
+      setEnabled: (Bool) throws -> OpenAtLogin.Status = OpenAtLogin.setEnabled,
+      presentApproval: () -> Void = { OpenAtLoginApproval.present() },
+      presentFailure: (Error) -> Void = { OpenAtLoginApproval.presentFailure($0) }
+    ) {
+      OpenAtLoginToggle.apply(
+        currentlyEnabled: currentlyEnabled,
+        setEnabled: setEnabled,
+        onStatus: { [weak self] status in
+          self?.refreshOpenAtLoginMenuItem(status: status)
+        },
+        onRequiresApproval: presentApproval,
+        onFailure: { [weak self] error in
+          self?.refreshOpenAtLoginMenuItem()
+          presentFailure(error)
+        }
+      )
+    }
+
+    func menuWillOpen(_ menu: NSMenu) {
+      refreshOpenAtLoginMenuItem()
+    }
+
+    private func refreshOpenAtLoginMenuItem(status: OpenAtLogin.Status = OpenAtLogin.status) {
+      openAtLoginItem?.state = status == .enabled ? .on : .off
+    }
+
     @objc private func restartCodex() {
         DispatchQueue.main.async { [weak self] in
             self?.restartCodexIfConfirmed()
@@ -357,4 +403,53 @@ class StatusBarController: NSObject {
     @objc private func quit() {
         NSApplication.shared.terminate(nil)
     }
+}
+
+enum OpenAtLoginApproval {
+  static func present(
+    openSettings: () -> Void = OpenAtLogin.openSystemSettings
+  ) {
+    let shouldRestoreAccessory = NSApp.activationPolicy() == .accessory
+      && !NSApp.windows.contains { $0.isVisible }
+    NSApp.setActivationPolicy(.regular)
+    NSApp.activate()
+    NSRunningApplication.current.activate(options: [.activateAllWindows])
+
+    let alert = NSAlert()
+    alert.messageText = OpenAtLoginMenuCopy.approvalTitle
+    alert.informativeText = OpenAtLoginMenuCopy.approvalMessage
+    alert.alertStyle = .informational
+    alert.addButton(withTitle: OpenAtLoginMenuCopy.openSettingsButton)
+    alert.addButton(withTitle: OpenAtLoginMenuCopy.cancelButton)
+    alert.window.level = .modalPanel
+    let response = alert.runModal()
+
+    if shouldRestoreAccessory {
+      NSApp.setActivationPolicy(.accessory)
+    }
+
+    if response == .alertFirstButtonReturn {
+      openSettings()
+    }
+  }
+
+  static func presentFailure(_ error: Error) {
+    let shouldRestoreAccessory = NSApp.activationPolicy() == .accessory
+      && !NSApp.windows.contains { $0.isVisible }
+    NSApp.setActivationPolicy(.regular)
+    NSApp.activate()
+    NSRunningApplication.current.activate(options: [.activateAllWindows])
+
+    let alert = NSAlert()
+    alert.messageText = OpenAtLoginMenuCopy.failureTitle
+    alert.informativeText = OpenAtLoginMenuCopy.failureMessage(error)
+    alert.alertStyle = .warning
+    alert.addButton(withTitle: "OK")
+    alert.window.level = .modalPanel
+    _ = alert.runModal()
+
+    if shouldRestoreAccessory {
+      NSApp.setActivationPolicy(.accessory)
+    }
+  }
 }

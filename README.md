@@ -30,6 +30,7 @@ CodexBar gateway — 127.0.0.1:8765
 - **Native GPT pass-through** — official OpenAI / ChatGPT requests are untouched
 - **No Codex sign-in needed for local-only use** (e.g. Ollama); sign-in is only required for native GPT/ChatGPT
 - **Menu bar status** with live gateway state + port, and a native Settings window
+- **Open at Login** — optional menu-bar toggle so CodexBar starts with macOS
 - **Friendly model names** auto-generated from provider model IDs (editable)
 - **Loopback-only gateway** — no management endpoints over HTTP, nothing reachable from the LAN
 - **In-app updates** from GitHub Releases (one-click install for notarized builds)
@@ -55,11 +56,12 @@ See [BUILDING.md](BUILDING.md) for packaging, code signing, notarization, and pu
 ## Quick start
 
 1. Launch CodexBar — a status icon appears in the menu bar.
-2. Open **Settings** (menu bar → Settings, or ⌘,).
-3. **Install a provider preset** and enter its API key (skipped for keyless providers like Ollama).
-4. Click **Add model** on the provider row and pick the models you want.
-5. Restart Codex when prompted (**Restart Codex**, ⌘R) so its picker refreshes.
-6. In Codex Desktop, open the model picker — your models are now listed.
+2. (Optional) Menu bar → **Open at Login** so the gateway starts automatically after reboot.
+3. Open **Settings** (menu bar → Settings, or ⌘,).
+4. **Install a provider preset** and enter its API key (skipped for keyless providers like Ollama).
+5. Click **Add model** on the provider row and pick the models you want.
+6. Restart Codex when prompted (**Restart Codex**, ⌘R) so its picker refreshes.
+7. In Codex Desktop, open the model picker — your models are now listed.
 
 > **Custom models require you to be signed in to Codex** — a **free account is enough**. Signed out, Codex only shows its built-in fallback models and labels any active custom model as "Custom". (Native GPT/ChatGPT models still need an OpenAI/ChatGPT account.) When you have custom models but Codex is signed out, Settings shows a reminder.
 
@@ -91,6 +93,10 @@ Doubled vendor prefixes are collapsed, and any name you edit yourself is preserv
 Only when you **add, edit, or delete a model** — those change Codex's exported picker catalog, and Settings will surface a **Restart Codex** button. **Provider** changes (including installing a preset) take effect **immediately** — the gateway reads endpoints and keys live from `~/.codexbar/providers.json`, so no restart is required.
 
 The menu-bar **Restart Codex** action (⌘R) always asks for confirmation first.
+
+### Open at Login
+
+Menu bar → **Open at Login** toggles whether CodexBar launches when you sign in to macOS (via `SMAppService`). A checkmark means it is enabled. The first time you turn it on, macOS may ask you to allow CodexBar under **System Settings → General → Login Items & Extensions** — CodexBar offers a shortcut to that pane when approval is required.
 
 ### Reset / Update Gateway Config
 

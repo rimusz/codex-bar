@@ -57,6 +57,7 @@ codex-bar/
 │   │   ├── CodexAuthWatcher.swift # watches ~/.codex for sign-in changes, re-patches config
 │   │   ├── CodexAppServer.swift  # Codex Desktop restart (re-patches config first)
 │   │   ├── APIClient.swift       # Health polling
+│   │   ├── OpenAtLogin.swift     # SMAppService login item toggle
 │   │   ├── Paths.swift
 │   │   └── GatewayLog.swift
 │   ├── UI/
@@ -171,6 +172,7 @@ CI: `.github/workflows/pr.yml` (PR: `make test` + `make app`), `.github/workflow
 | Restart Codex Desktop | `CodexAppServer.swift`; menu **Restart Codex** (⌘R); Settings shows a **Restart Codex** button (`SettingsStore.needsCodexRestart` / `restartCodex`) after provider/model changes |
 | Document third-party CLI use (Zero) | `README.md` → Using CodexBar with Zero; gateway base URL `Paths.gatewayHost`/`gatewayPort` |
 | Menu bar UI | `StatusBarController.swift` |
+| Open at Login | `OpenAtLogin.swift` (`SMAppService.mainApp`), menu item in `StatusBarController` |
 | Gateway status/port in menu | `StatusBarController` (disabled item), `StatusBarMenuCopy.gatewayStatusTitle`, address from `Paths.gatewayHost`/`gatewayPort` |
 | In-app updates | `UpdateChecker.swift`, `AppUpdater.swift`, `UpdateScheduler.swift`, `UpdatePanel.swift` |
 | Version display | `AppVersion.swift` (bundle Info.plist first, then `VERSION` file) |
@@ -186,6 +188,7 @@ Unit tests in `Tests/CodexBarTests/`:
 - `CodexConfigTests` — managed block stripping
 - `ModelCatalogTests` — provider/model API parsing
 - `StatusBarTests` — accessibility labels
+- `OpenAtLoginTests` — login-item status mapping + toggle flow
 - `UpdateCheckerTests` — version compare, notarized filter, asset selection
 - `UpdateSettingsStoreTests` — skip/dismiss behavior
 - `PathsTests` — legacy config migration
