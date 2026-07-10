@@ -4,6 +4,8 @@
 
 Codex Desktop normally talks only to OpenAI's own models. CodexBar sits quietly in your menu bar and runs a tiny local gateway that lets Codex route to **third-party providers** (xAI, DeepSeek, OpenRouter, Z.ai, Kimi, Qwen, MiniMax, Cline Pass, …) or **local models** (Ollama) — while still passing native GPT/ChatGPT requests straight through to OpenAI. You manage everything from a native **Settings** window; no terminal or browser required.
 
+![CodexBar Settings and menu bar](docs/screenshots/settings-and-menu.png)
+
 > Providers must expose an OpenAI-compatible `/chat/completions` endpoint. (Cursor's API, for example, only lists models and has no public chat-completions endpoint, so it can't be used here.)
 
 ---
