@@ -19,20 +19,28 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     }
 
     let hosting = NSHostingController(rootView: SettingsView(store: store))
-    let newWindow = NSWindow(
+    let newWindow = Self.makeWindow(contentViewController: hosting, delegate: self)
+    window = newWindow
+    present(newWindow)
+  }
+
+  static func makeWindow(contentViewController: NSViewController, delegate: NSWindowDelegate) -> NSWindow {
+    let window = NSWindow(
       contentRect: NSRect(x: 0, y: 0, width: 680, height: 640),
       styleMask: [.titled, .closable, .miniaturizable, .resizable],
       backing: .buffered,
       defer: false
     )
-    newWindow.title = "CodexBar Settings"
-    newWindow.delegate = self
-    newWindow.contentViewController = hosting
-    newWindow.setFrameAutosaveName("CodexBarSettingsWindow")
-    newWindow.minSize = NSSize(width: 620, height: 520)
-    newWindow.hidesOnDeactivate = false
-    window = newWindow
-    present(newWindow)
+    window.title = "CodexBar Settings"
+    // Programmatic NSWindows default to isReleasedWhenClosed = true, which over-releases
+    // the window while `window` still references it — reopening then crashes. Let ARC own it.
+    window.isReleasedWhenClosed = false
+    window.delegate = delegate
+    window.contentViewController = contentViewController
+    window.setFrameAutosaveName("CodexBarSettingsWindow")
+    window.minSize = NSSize(width: 620, height: 520)
+    window.hidesOnDeactivate = false
+    return window
   }
 
   private func present(_ window: NSWindow) {
