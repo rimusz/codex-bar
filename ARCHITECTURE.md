@@ -17,7 +17,7 @@ CodexBar is a **menu-bar macOS app** (AppKit) that runs an embedded **gateway** 
 | Menu bar status + native settings window | |
 | In-app updates (notarized GitHub releases) | |
 
-**Platform:** macOS 26+. **Version:** `VERSION` → `AppVersion.display`. **Build:** SwiftPM only — no Xcode project; use `make` / `swift build`.
+**Platform:** macOS 26+. **Version:** `AppVersion.display` prefers packaged `CFBundleShortVersionString` (from `VERSION` at build time), then falls back to the repo `VERSION` file for unpackaged `swift build` / tests. **Build:** SwiftPM only — no Xcode project; use `make` / `swift build`.
 
 ---
 
@@ -173,7 +173,7 @@ CI: `.github/workflows/pr.yml` (PR: `make test` + `make app`), `.github/workflow
 | Menu bar UI | `StatusBarController.swift` |
 | Gateway status/port in menu | `StatusBarController` (disabled item), `StatusBarMenuCopy.gatewayStatusTitle`, address from `Paths.gatewayHost`/`gatewayPort` |
 | In-app updates | `UpdateChecker.swift`, `AppUpdater.swift`, `UpdateScheduler.swift`, `UpdatePanel.swift` |
-| Version display | `AppVersion.swift`, `VERSION` |
+| Version display | `AppVersion.swift` (bundle Info.plist first, then `VERSION` file) |
 | Packaging / signing | `scripts/build-macos-app.sh`, `BUILDING.md` |
 
 ---

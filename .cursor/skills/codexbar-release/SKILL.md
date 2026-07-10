@@ -7,7 +7,7 @@ description: Versions, packages, signs, notarizes, and publishes CodexBar GitHub
 
 ## Version files
 
-- `VERSION` — semver used in About/menu and release tags (e.g. `1.0.0`)
+- `VERSION` — semver baked into Info.plist at package time; About/menu prefer that, with a `VERSION`-file fallback for unpackaged builds (e.g. `1.0.0`)
 - Tag format: `v{VERSION}` (e.g. `v1.0.0`)
 
 ## CI release (unsigned)
