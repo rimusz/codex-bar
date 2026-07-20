@@ -1,9 +1,9 @@
 ---
-name: codexbar-dev
-description: Builds, runs, and tests the CodexBar macOS SwiftPM app. Use when developing CodexBar, running make targets, fixing build failures, or working on AppKit/menu bar UI in this repo.
+name: codexgateway-dev
+description: Builds, runs, and tests the CodexGateway macOS SwiftPM app. Use when developing CodexGateway, running make targets, fixing build failures, or working on AppKit/menu bar UI in this repo.
 ---
 
-# CodexBar development
+# CodexGateway development
 
 ## Quick start
 
@@ -24,7 +24,7 @@ xed .             # open Package.swift in Xcode (optional)
 
 **Do not finish a task with code-only diffs.** Same session:
 
-1. **`make test`** — must pass; add tests in `Tests/CodexBarTests/` for behavior you changed.
+1. **`make test`** — must pass; add tests in `Tests/CodexGatewayTests/` for behavior you changed.
 2. **Smoke test** — for gateway/menu bar changes: `make run`, then `curl -s http://127.0.0.1:8765/health`.
 3. **Computer Use** — for Settings / menu bar / Codex Desktop UI changes, verify live with the `grokbuild-computer-use` MCP (`computer_list_apps`, `computer_screenshot` via agent-desktop, `computer_snapshot`, `computer_click`); fall back to the `orca computer …` CLI (needs the Orca app running). Codex's chat view is an Electron canvas with no a11y tree — use screenshots there; restart Codex with `osascript … quit` + `open -a Codex`.
 4. **`ARCHITECTURE.md`** — update routes, source map, config paths, or common tasks → files when structure/flow changes.
@@ -38,7 +38,7 @@ Full checklist: `.cursor/rules/docs-and-tests.mdc`.
 
 | Task | Command |
 |------|---------|
-| Package .app | `make app` → `dist/CodexBar.app` |
+| Package .app | `make app` → `dist/CodexGateway.app` |
 | DMG | `make dmg` |
 | Clean | `make clean` |
 | Unit tests | `make test` |

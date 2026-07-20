@@ -1,9 +1,9 @@
 ---
-name: codexbar-release
-description: Versions, packages, signs, notarizes, and publishes CodexBar GitHub releases. Use when bumping VERSION, running make release, editing release.yml, or helping with codesigning/notarization.
+name: codexgateway-release
+description: Versions, packages, signs, notarizes, and publishes CodexGateway GitHub releases. Use when bumping VERSION, running make release, editing release.yml, or helping with codesigning/notarization.
 ---
 
-# CodexBar release
+# CodexGateway release
 
 ## Version files
 
@@ -31,7 +31,7 @@ If `make release` fails while pushing `v{VERSION}` with “already exists”, th
 ```bash
 git push --force origin "refs/tags/v{VERSION}"
 gh release create "v{VERSION}" --title "v{VERSION} (Notarized)" \
-  dist/CodexBar-v{VERSION}.app.zip dist/CodexBar-v{VERSION}-macOS.dmg
+  dist/CodexGateway-v{VERSION}.app.zip dist/CodexBar-v{VERSION}.app.zip dist/CodexGateway-v{VERSION}-macOS.dmg
 ```
 
 (Use `gh release upload … --clobber` if the release already exists.)
@@ -47,8 +47,17 @@ gh release create "v{VERSION}" --title "v{VERSION} (Notarized)" \
 
 ## Packaging
 
-- Bundle ID: `com.rimusz.CodexBar`
-- Output: `dist/CodexBar.app`, `dist/CodexBar-macOS.dmg`
-- Scripts: `scripts/build-macos-app.sh`, `scripts/codesign-app-bundle.sh`, `scripts/notarize.sh`, `scripts/codexbar-install-update.sh`
+- Bundle ID: `com.rimusz.CodexGateway`
+- App bundle: `dist/CodexGateway.app`, executable `CodexGateway`
+- DMG: `dist/CodexGateway-macOS.dmg`
+- Release zips: `CodexGateway-{tag}.app.zip` + legacy `CodexBar-{tag}.app.zip`
+- GitHub repo: `rimusz/codex-bar` (unchanged)
+- Scripts: `scripts/build-macos-app.sh`, `scripts/codesign-app-bundle.sh`, `scripts/notarize.sh`, `scripts/codexgateway-install-update.sh`
+
+### Upgrade / legacy (from CodexBar)
+
+- Old bundle ID `com.rimusz.CodexBar` — Login Items may need re-enable after upgrade
+- Legacy install helper `codexbar-install-update`
+- Legacy release zip `CodexBar-{tag}.app.zip` for older updaters
 
 When changing release naming, assets, packaging, or in-app update behavior, update `BUILDING.md` and `ARCHITECTURE.md`.

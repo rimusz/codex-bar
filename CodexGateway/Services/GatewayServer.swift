@@ -12,7 +12,7 @@ final class GatewayServer {
     if !FileManager.default.fileExists(atPath: Paths.providersConfig) {
       try? ModelCatalog.shared.saveProviders(ModelCatalog.shared.loadProviders())
     }
-    // Only keep Codex in sync if CodexBar was already applied to it. Never silently
+    // Only keep Codex in sync if CodexGateway was already applied to it. Never silently
     // inject into a fresh/native Codex (e.g. after the user reinstalled Codex or
     // deleted ~/.codex) — Settings' "Update Gateway Config" is the opt-in.
     if CodexConfig.hasManagedBlock() {
@@ -81,7 +81,7 @@ final class GatewayServer {
           "id": m.slug,
           "object": "model",
           "created": Int(Date().timeIntervalSince1970),
-          "owned_by": m.priority >= 100 ? "codexbar" : "openai"
+          "owned_by": m.priority >= 100 ? "codexgateway" : "openai"
         ] as [String: Any]
       }
     json(response, ["object": "list", "data": data])

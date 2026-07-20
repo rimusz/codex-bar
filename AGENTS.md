@@ -1,4 +1,4 @@
-# CodexBar
+# CodexGateway
 
 Pure-Swift macOS menu-bar app with an embedded gateway for Codex Desktop.
 
@@ -14,13 +14,13 @@ Pure-Swift macOS menu-bar app with an embedded gateway for Codex Desktop.
 
 ## Boundaries
 
-CodexBar owns the local gateway (`127.0.0.1:8765`), menu bar UI, and `~/.codex` / `~/.codexbar` config management. Codex Desktop owns the chat UI and agent runtime.
+CodexGateway owns the local gateway (`127.0.0.1:8765`), menu bar UI, and `~/.codex` / `~/.codexgateway` config management. Codex Desktop owns the chat UI and agent runtime.
 
 When changing gateway or Codex integration:
 
 1. Prefer existing services: `GatewayServer`, `Translator`, `ModelCatalog`, `CodexConfig`, `CodexAppServer`.
 2. Keep menu bar state in `StatusBarController` + `APIClient` health polling.
-3. Post status via `CodexBarStatusChanged` when gateway health changes.
+3. Post status via `CodexGatewayStatusChanged` when gateway health changes.
 4. Do not add an Xcode project; stay on SwiftPM + Makefile scripts.
 
 ## Code style
@@ -33,7 +33,7 @@ When changing gateway or Codex integration:
 
 Every code change must ship with **updated documentation** and **tests** in the same session — not as a follow-up.
 
-1. **Tests** — run `make test`; add or extend `Tests/CodexBarTests/` for new or changed behavior.
+1. **Tests** — run `make test`; add or extend `Tests/CodexGatewayTests/` for new or changed behavior.
 2. **Live verification** — for gateway changes, `make run` then `curl /health`. For Settings / menu bar / Codex Desktop UI changes, verify live with **Computer Use** (`grokbuild-computer-use` MCP, or the `orca computer` CLI fallback) instead of asking the user for screenshots.
 3. **ARCHITECTURE.md** — update for new services, routes, config paths, or flows.
 4. **README.md** — update for user-visible features or install/requirements changes.

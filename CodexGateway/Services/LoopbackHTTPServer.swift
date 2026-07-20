@@ -200,7 +200,7 @@ final class WebSocketSession {
 
 final class LoopbackHTTPServer {
   private var listener: NWListener?
-  private let queue = DispatchQueue(label: "com.codexbar.http", qos: .userInitiated)
+  private let queue = DispatchQueue(label: "com.rimusz.CodexGateway.http", qos: .userInitiated)
   var handler: HTTPHandler?
 
   func start(host: String = Paths.gatewayHost, port: UInt16 = Paths.gatewayPort) throws {

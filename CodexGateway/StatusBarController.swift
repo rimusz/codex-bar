@@ -65,7 +65,7 @@ enum StatusBarMenuCopy {
     host: String = Paths.gatewayHost,
     port: UInt16 = Paths.gatewayPort
   ) -> String {
-    "Gateway: \(gatewayStateLabel(status)) · \(host):\(port)"
+    "\(gatewayStateLabel(status)) · \(host):\(port)"
   }
 }
 
@@ -106,21 +106,21 @@ class StatusBarController: NSObject, NSMenuDelegate {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleStatusChanged(_:)),
-            name: .init("CodexBarStatusChanged"),
+            name: .init("CodexGatewayStatusChanged"),
             object: nil
         )
 
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleUpdateStateChanged),
-            name: .codexBarUpdateAvailable,
+            name: .codexGatewayUpdateAvailable,
             object: nil
         )
 
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleUpdateStateChanged),
-            name: .codexBarUpdateStateChanged,
+            name: .codexGatewayUpdateStateChanged,
             object: nil
         )
 
@@ -158,7 +158,7 @@ class StatusBarController: NSObject, NSMenuDelegate {
             image.isTemplate = true
             button.image = image
         } else {
-            button.image = NSImage(systemSymbolName: "circle.dashed", accessibilityDescription: "CodexBar")
+            button.image = NSImage(systemSymbolName: "circle.dashed", accessibilityDescription: "CodexGateway")
         }
 
         button.isBordered = false
@@ -167,7 +167,7 @@ class StatusBarController: NSObject, NSMenuDelegate {
 
     private func updateIcon(for status: AppStatus) {
         guard let button = statusItem.button else { return }
-        button.setAccessibilityLabel("CodexBar — \(status.accessibilityLabel)")
+        button.setAccessibilityLabel("CodexGateway — \(status.accessibilityLabel)")
 
         if CodexBrandIcon.mark() != nil {
             button.alphaValue = status == .offline ? 0.45 : 1.0
@@ -228,7 +228,7 @@ class StatusBarController: NSObject, NSMenuDelegate {
     }
 
     private func setupMenu() {
-    let titleItem = NSMenuItem(title: "CodexBar \(AppVersion.display)", action: nil, keyEquivalent: "")
+    let titleItem = NSMenuItem(title: "CodexGateway \(AppVersion.display)", action: nil, keyEquivalent: "")
     titleItem.isEnabled = false
     menu.addItem(titleItem)
 

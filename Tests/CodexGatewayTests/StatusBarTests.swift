@@ -1,5 +1,5 @@
 import XCTest
-@testable import CodexBar
+@testable import CodexGateway
 
 final class StatusBarTests: XCTestCase {
     func testAppStatusAccessibilityLabels() {
@@ -40,11 +40,11 @@ final class StatusBarTests: XCTestCase {
     func testGatewayStatusTitleIncludesStateAndAddress() {
         XCTAssertEqual(
             StatusBarMenuCopy.gatewayStatusTitle(.idle, host: "127.0.0.1", port: 8765),
-            "Gateway: Running · 127.0.0.1:8765"
+            "Running · 127.0.0.1:8765"
         )
         XCTAssertEqual(
             StatusBarMenuCopy.gatewayStatusTitle(.offline, host: "127.0.0.1", port: 8765),
-            "Gateway: Offline · 127.0.0.1:8765"
+            "Offline · 127.0.0.1:8765"
         )
     }
 

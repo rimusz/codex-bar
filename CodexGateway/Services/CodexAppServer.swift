@@ -16,7 +16,7 @@ final class CodexAppServer {
   private var buffer = ""
   private var nextId = 1
   private var pending: [Int: (Result<Any, Error>) -> Void] = [:]
-  private let queue = DispatchQueue(label: "com.codexbar.appserver")
+  private let queue = DispatchQueue(label: "com.rimusz.CodexGateway.appserver")
 
   private init() {}
 

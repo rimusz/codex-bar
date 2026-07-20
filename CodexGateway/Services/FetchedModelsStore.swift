@@ -4,7 +4,7 @@ struct FetchedModelsFile: Codable {
   var providers: [String: [FetchedModel]]
 }
 
-/// Persists provider `/models` fetch results under `~/.codexbar/fetched_models.json`.
+/// Persists provider `/models` fetch results under `~/.codexgateway/fetched_models.json`.
 final class FetchedModelsStore {
   static let shared = FetchedModelsStore()
 

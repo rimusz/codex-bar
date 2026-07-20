@@ -1,5 +1,5 @@
 import XCTest
-@testable import CodexBar
+@testable import CodexGateway
 
 final class CodexAuthWatcherTests: XCTestCase {
     func testSignInStateChangedOnlyOnTransition() {

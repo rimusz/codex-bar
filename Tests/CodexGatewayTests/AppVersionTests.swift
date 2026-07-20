@@ -1,6 +1,6 @@
 import XCTest
 import AppKit
-@testable import CodexBar
+@testable import CodexGateway
 
 final class AppVersionTests: XCTestCase {
     func testShortVersionIsNonEmpty() {

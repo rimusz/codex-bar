@@ -46,10 +46,10 @@ enum UpdateScheduler {
     // Keep an active debug simulation so Check for Updates… can still show the install UI.
     if UpdateDebugSimulator.isAppSimulationActive {
       UpdateSettingsStore.lastCheckDate = Date()
-      NotificationCenter.default.post(name: .codexBarUpdateStateChanged, object: nil)
+      NotificationCenter.default.post(name: .codexGatewayUpdateStateChanged, object: nil)
       if hasActionableAppUpdate, let release = cachedAppRelease {
         NotificationCenter.default.post(
-          name: .codexBarUpdateAvailable,
+          name: .codexGatewayUpdateAvailable,
           object: nil,
           userInfo: ["appVersion": release.latestVersion]
         )
@@ -65,11 +65,11 @@ enum UpdateScheduler {
       cachedAppRelease = release
     }
 
-    NotificationCenter.default.post(name: .codexBarUpdateStateChanged, object: nil)
+    NotificationCenter.default.post(name: .codexGatewayUpdateStateChanged, object: nil)
 
     if hasActionableAppUpdate, let release = cachedAppRelease {
       NotificationCenter.default.post(
-        name: .codexBarUpdateAvailable,
+        name: .codexGatewayUpdateAvailable,
         object: nil,
         userInfo: ["appVersion": release.latestVersion]
       )
@@ -90,10 +90,10 @@ enum UpdateScheduler {
   }
 
   static func postSimulatedUpdateNotifications() {
-    NotificationCenter.default.post(name: .codexBarUpdateStateChanged, object: nil)
+    NotificationCenter.default.post(name: .codexGatewayUpdateStateChanged, object: nil)
     guard hasActionableAppUpdate, let release = cachedAppRelease else { return }
     NotificationCenter.default.post(
-      name: .codexBarUpdateAvailable,
+      name: .codexGatewayUpdateAvailable,
       object: nil,
       userInfo: ["appVersion": release.latestVersion]
     )

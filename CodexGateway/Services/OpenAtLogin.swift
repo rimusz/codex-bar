@@ -1,7 +1,7 @@
 import Foundation
 import ServiceManagement
 
-/// Registers CodexBar as a macOS Login Item via `SMAppService.mainApp`.
+/// Registers CodexGateway as a macOS Login Item via `SMAppService.mainApp`.
 enum OpenAtLogin {
   enum Status: Equatable {
     case enabled
@@ -76,9 +76,9 @@ enum OpenAtLoginToggle {
 enum OpenAtLoginMenuCopy {
   static let title = "Open at Login"
 
-  static let approvalTitle = "Allow CodexBar in Login Items"
+  static let approvalTitle = "Allow CodexGateway in Login Items"
   static let approvalMessage =
-    "macOS needs your approval before CodexBar can open at login. " +
+    "macOS needs your approval before CodexGateway can open at login. " +
     "Turn it on in System Settings → General → Login Items & Extensions."
   static let openSettingsButton = "Open System Settings"
   static let cancelButton = "Cancel"

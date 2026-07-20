@@ -1,23 +1,52 @@
-# CodexBar — architecture reference
+# CodexGateway — architecture reference
 
-**Read this first in every new chat.** Canonical map of how CodexBar works. `AGENTS.md` points here; `.cursor/rules/` add file-specific conventions.
+**Read this first in every new chat.** Canonical map of how CodexGateway works. `AGENTS.md` points here; `.cursor/rules/` add file-specific conventions.
 
 ---
 
-## What CodexBar is
+## What CodexGateway is
 
-CodexBar is a **menu-bar macOS app** (AppKit) that runs an embedded **gateway** on `http://127.0.0.1:8765`. Codex Desktop routes model requests through it for third-party model translation and config management.
+CodexGateway is a **menu-bar macOS app** (AppKit) that runs an embedded **gateway** on `http://127.0.0.1:8765`. Codex Desktop routes model requests through it for third-party model translation and config management.
 
-| CodexBar owns | Codex Desktop owns |
-|---------------|-------------------|
+| CodexGateway owns | Codex Desktop owns |
+|-------------------|-------------------|
 | Loopback HTTP gateway (`/v1/*`, `/health`, `/api/restart-codex`) | Chat UI, sessions, tool execution |
 | Responses ↔ Chat Completions translation | Official OpenAI / ChatGPT pass-through usage |
-| `~/.codexbar/` catalog + providers | User auth (`~/.codex/auth.json`) |
+| `~/.codexgateway/` catalog + providers | User auth (`~/.codex/auth.json`) |
 | `~/.codex/config.toml` managed block | Agent runtime |
 | Menu bar status + native settings window | |
 | In-app updates (notarized GitHub releases) | |
 
 **Platform:** macOS 26+. **Version:** `AppVersion.display` prefers packaged `CFBundleShortVersionString` (from `VERSION` at build time), then falls back to the repo `VERSION` file for unpackaged `swift build` / tests. **Build:** SwiftPM only — no Xcode project; use `make` / `swift build`.
+
+**GitHub repo:** `rimusz/codex-bar` (unchanged).
+
+### Identity
+
+| Item | Value |
+|------|--------|
+| Bundle ID | `com.rimusz.CodexGateway` |
+| Config dir | `~/.codexgateway` |
+| Codex provider id | `codexgateway` / `[model_providers.codexgateway]` |
+| Managed markers | `# >>> codexgateway managed >>>` |
+| Install helper | `Contents/Resources/codexgateway-install-update` |
+| Notifications | `CodexGatewayStatusChanged`, `CodexGatewayUpdateAvailable`, etc. |
+| Debug log | `/tmp/codexgateway_debug.log` |
+| UserDefaults | `codexgateway.updates.*` |
+
+### Upgrade / legacy (from CodexBar)
+
+| Item | Legacy |
+|------|--------|
+| Bundle ID | `com.rimusz.CodexBar` — macOS Login Items may need re-enable after upgrade |
+| Config dir | `~/.codexbar` → migrated to `~/.codexgateway` on launch (`Paths.migrateLegacyConfigDirectory`) |
+| Codex provider | `codexbar` / `[model_providers.codexbar]` → rewritten to `codexgateway` on refresh/patch |
+| Managed markers | `# >>> codexbar managed >>>` → rewritten on refresh/patch |
+| Install helper | legacy `codexbar-install-update` |
+| Release asset | legacy `CodexBar-{tag}.app.zip` for older updaters |
+| App folder | `CodexBar.app` → `CodexGateway.app` on launch or in-app update |
+
+Releases publish **`CodexGateway-{tag}.app.zip`** plus a legacy **`CodexBar-{tag}.app.zip`** so older updaters still work.
 
 ---
 
@@ -34,8 +63,8 @@ CodexBar is a **menu-bar macOS app** (AppKit) that runs an embedded **gateway** 
 ## Repository layout
 
 ```
-codex-bar/
-├── CodexBar/                     # Main app target (AppKit)
+codex-bar/                        # GitHub repo name (unchanged)
+├── CodexGateway/                 # Main app target (AppKit)
 │   ├── main.swift                # NSApplication entry (.accessory)
 │   ├── AppDelegate.swift         # Gateway start/stop, status bar
 │   ├── StatusBarController.swift # Menu bar icon + menu
@@ -48,7 +77,7 @@ codex-bar/
 │   │   ├── Translator.swift      # Responses ↔ Chat translation
 │   │   ├── ModelCatalog.swift    # custom_model_catalog.json + providers
 │   │   ├── ProviderModelFetcher.swift # OpenAI /models + Cline Pass recommended-models
-│   │   ├── FetchedModelsStore.swift   # ~/.codexbar/fetched_models.json cache
+│   │   ├── FetchedModelsStore.swift   # ~/.codexgateway/fetched_models.json cache
 │   │   ├── ZstdBridge.swift         # zstd decompress for Codex request bodies
 │   │   ├── UpdateChecker.swift    # GitHub release version check
 │   │   ├── UpdateScheduler.swift  # Background update polling
@@ -67,7 +96,7 @@ codex-bar/
 │   │   ├── SettingsStore.swift
 │   │   └── UpdatePanel.swift
 │   └── Resources/Assets.xcassets/
-├── Tests/CodexBarTests/
+├── Tests/CodexGatewayTests/
 ├── scripts/                      # build-macos-app.sh, release.sh, notarize.sh
 ├── Makefile
 ├── Package.swift
@@ -102,26 +131,26 @@ The gateway is intentionally minimal: only the routes Codex Desktop and the app 
 
 ### Other OpenAI-compatible clients (e.g. Zero)
 
-Any tool on the same Mac that speaks OpenAI Chat Completions can use `http://127.0.0.1:8765/v1` while CodexBar is running. Custom model slugs come from `GET /v1/models`; upstream provider keys are injected from `~/.codexbar/providers.json`. Native GPT pass-through uses `~/.codex/auth.json` when the client does not send `Authorization`.
+Any tool on the same Mac that speaks OpenAI Chat Completions can use `http://127.0.0.1:8765/v1` while CodexGateway is running. Custom model slugs come from `GET /v1/models`; upstream provider keys are injected from `~/.codexgateway/providers.json`. Native GPT pass-through uses `~/.codex/auth.json` when the client does not send `Authorization`.
 
-End-user setup (Zero TUI, CLI `zero exec`, provider profile, troubleshooting): **`README.md` → Using CodexBar with Zero**.
+End-user setup (Zero TUI, CLI `zero exec`, provider profile, troubleshooting): **`README.md` → Using CodexGateway with Zero**.
 
 ---
 
 ## In-app updates
 
-CodexBar checks `https://api.github.com/repos/rimusz/codex-bar/releases` for the newest **notarized** release (title/body marker). Unsigned releases are ignored for one-click install.
+CodexGateway checks `https://api.github.com/repos/rimusz/codex-bar/releases` for the newest **notarized** release (title/body marker). Unsigned releases are ignored for one-click install.
 
 | Component | Role |
 |-----------|------|
 | `UpdateScheduler` | Launch + daily background check (30s delay, 24h interval) |
-| `UpdateChecker` | GitHub API, semver compare, asset `CodexBar-{tag}.app.zip` |
-| `AppUpdater` | Download, codesign/spctl verify, install via `codexbar-install-update` helper |
+| `UpdateChecker` | GitHub API, semver compare, asset `CodexGateway-{tag}.app.zip` (falls back to legacy `CodexBar-{tag}.app.zip`) |
+| `AppUpdater` | Download, codesign/spctl verify, install via `codexgateway-install-update` helper; migrates `CodexBar.app` → `CodexGateway.app` |
 | `UpdatePanel` | Menu **Check for Updates…** / **Upgrade Available…** (⌘U); primary action is a system default button (**Update App** → download/verify → **Install and Restart**, or **Open Release Page** when the notarized release has no `.app.zip`). Panel height is measured from the content chain (including the button stack) so actions are not clipped. |
 | `UpdatePanelModel` | Pure UI decisions (install button vs open release page; skip vs notify) |
-| `UpdateSettingsStore` | UserDefaults: auto-check, skip version, last check |
+| `UpdateSettingsStore` | UserDefaults `codexgateway.updates.*` (migrated from legacy `codexbar.updates.*`): auto-check, skip version, last check |
 
-Install helper: `scripts/codexbar-install-update.sh` → bundled as `Contents/Resources/codexbar-install-update`.
+Install helper: `scripts/codexgateway-install-update.sh` → bundled as `Contents/Resources/codexgateway-install-update`.
 
 ---
 
@@ -129,11 +158,11 @@ Install helper: `scripts/codexbar-install-update.sh` → bundled as `Contents/Re
 
 | Path | Purpose |
 |------|---------|
-| `~/.codexbar/custom_model_catalog.json` | CodexBar internal model catalog (routing metadata). Raw model ids get friendly display names via `ModelCatalog.prettyDisplayName` / `normalizeDisplayNames` (run on Settings reload + gateway startup; drops `vendor/model` prefixes, collapses doubled vendors, title-cases, and prefixes the provider brand Cline-style via `providerBrand`, e.g. "xAI Grok 4.3"); user-edited names are preserved. |
+| `~/.codexgateway/custom_model_catalog.json` | CodexGateway internal model catalog (routing metadata). Raw model ids get friendly display names via `ModelCatalog.prettyDisplayName` / `normalizeDisplayNames` (run on Settings reload + gateway startup; drops `vendor/model` prefixes, collapses doubled vendors, title-cases, and prefixes the provider brand Cline-style via `providerBrand`, e.g. "xAI Grok 4.3"); user-edited names are preserved. |
 | `~/.codex/model-catalogs/custom-providers.json` | Codex-compatible picker export (`model_catalog_json`): native ChatGPT/Codex models plus custom entries. **Codex only renders custom entries in its picker when signed in** (free account is enough); signed out it shows a built-in fallback list and labels any active custom model as "Custom". Settings surfaces a sign-in hint (`SettingsStore.customModelsNeedSignIn`) when custom models exist but `auth.json` is absent. |
-| `~/.codexbar/providers.json` | Provider endpoints + credentials. Read **live** by the gateway per request (`ModelCatalog.resolveUpstream`), so provider/preset changes take effect immediately — **no Codex restart** (only model changes require one; see `SettingsStore.requiresCodexRestart`). |
-| `~/.codexbar/fetched_models.json` | Cached model lists per provider (OpenAI `/models`, or Cline Pass recommended-models feed); replaced on each fetch |
-| `~/.codex/config.toml` | Codex config (managed blocks patched). `[model_providers.codexbar].requires_openai_auth` is set from sign-in state: `false` when not signed in (skips Codex login — enables local-only Ollama/custom use), `true` when signed in (native GPT/ChatGPT pass-through). Automatic callers (startup, `CodexAuthWatcher`, restart) only **refresh** the block when it is already present (`refreshManagedConfigIfApplied`) — CodexBar never silently injects into a fresh/native Codex; Settings' **Update Gateway Config** is the explicit opt-in. |
+| `~/.codexgateway/providers.json` | Provider endpoints + credentials. Read **live** by the gateway per request (`ModelCatalog.resolveUpstream`), so provider/preset changes take effect immediately — **no Codex restart** (only model changes require one; see `SettingsStore.requiresCodexRestart`). |
+| `~/.codexgateway/fetched_models.json` | Cached model lists per provider (OpenAI `/models`, or Cline Pass recommended-models feed); replaced on each fetch |
+| `~/.codex/config.toml` | Codex config (managed blocks patched). `[model_providers.codexgateway].requires_openai_auth` is set from sign-in state: `false` when not signed in (skips Codex login — enables local-only Ollama/custom use), `true` when signed in (native GPT/ChatGPT pass-through). Legacy `codexbar` blocks are rewritten to `codexgateway` on refresh/patch. Automatic callers (startup, `CodexAuthWatcher`, restart) only **refresh** the block when it is already present (`refreshManagedConfigIfApplied`) — CodexGateway never silently injects into a fresh/native Codex; Settings' **Update Gateway Config** is the explicit opt-in. |
 | `~/.codex/auth.json` | Auth token for pass-through; also read by `CodexConfig.isSignedIn()` to decide `requires_openai_auth`; watched by `CodexAuthWatcher` |
 
 ---
@@ -142,7 +171,8 @@ Install helper: `scripts/codexbar-install-update.sh` → bundled as `Contents/Re
 
 | Name | Purpose |
 |------|---------|
-| `CodexBarStatusChanged` | Menu bar status (`AppStatus` object) |
+| `CodexGatewayStatusChanged` | Menu bar status (`AppStatus` object) |
+| `CodexGatewayUpdateAvailable` | In-app update available (from `UpdateScheduler` / `UpdateChecker`) |
 
 ---
 
@@ -151,12 +181,14 @@ Install helper: `scripts/codexbar-install-update.sh` → bundled as `Contents/Re
 ```bash
 make build      # swift build -c release
 make test       # swift test
-make run        # build + launch .build/CodexBar.app
-make app        # dist/CodexBar.app + DMG
+make run        # build + launch .build/CodexGateway.app
+make app        # dist/CodexGateway.app + DMG
 make release    # GitHub release via scripts/release.sh
 ```
 
 CI: `.github/workflows/pr.yml` (PR: `make test` + `make app`), `.github/workflows/release.yml` (manual dispatch, unsigned publish). Notarized: local `make release RELEASE_TYPE=notarized`. See `BUILDING.md` → GitHub Releases.
+
+Release assets: `CodexGateway-{tag}.app.zip`, legacy `CodexBar-{tag}.app.zip`, `CodexGateway-{tag}-macOS.dmg`.
 
 ---
 
@@ -170,13 +202,14 @@ CI: `.github/workflows/pr.yml` (PR: `make test` + `make app`), `.github/workflow
 | Install provider preset | `PresetInstaller`, Settings window (provider only; models fetched/added separately). Cline Pass listing: `ProviderModelFetcher.fetchClinePassRecommended` → `https://api.cline.bot/api/v1/ai/cline/recommended-models` (no API key) |
 | Open Settings | `SettingsWindowController`, menu **Settings** (⌘,) |
 | Patch Codex config | `CodexConfig.swift` |
-| Reset/Update gateway config | `SettingsView` (label toggles on `SettingsStore.gatewayConfigInSync`), `SettingsStore.resetGatewayConfig` / `updateGatewayConfig`, `CodexConfig.resetToNative` (Codex-side only; keeps `~/.codexbar` data) |
+| Reset/Update gateway config | `SettingsView` (label toggles on `SettingsStore.gatewayConfigInSync`), `SettingsStore.resetGatewayConfig` / `updateGatewayConfig`, `CodexConfig.resetToNative` (Codex-side only; keeps `~/.codexgateway` data) |
 | Restart Codex Desktop | `CodexAppServer.swift`; menu **Restart Codex** (⌘R); Settings shows a **Restart Codex** button (`SettingsStore.needsCodexRestart` / `restartCodex`) after provider/model changes |
-| Document third-party CLI use (Zero) | `README.md` → Using CodexBar with Zero; gateway base URL `Paths.gatewayHost`/`gatewayPort` |
+| Document third-party CLI use (Zero) | `README.md` → Using CodexGateway with Zero; gateway base URL `Paths.gatewayHost`/`gatewayPort` |
 | Menu bar UI | `StatusBarController.swift` |
 | Open at Login | `OpenAtLogin.swift` (`SMAppService.mainApp`), menu item in `StatusBarController` |
 | Gateway status/port in menu | `StatusBarController` (disabled item), `StatusBarMenuCopy.gatewayStatusTitle`, address from `Paths.gatewayHost`/`gatewayPort` |
 | In-app updates | `UpdateChecker.swift`, `AppUpdater.swift`, `UpdateScheduler.swift`, `UpdatePanel.swift` |
+| App rename / migration | `AppIdentity.swift`, `AppUpdater.swift`, `scripts/codexgateway-install-update.sh` |
 | Version display | `AppVersion.swift` (bundle Info.plist first, then `VERSION` file) |
 | Packaging / signing | `scripts/build-macos-app.sh`, `BUILDING.md` |
 
@@ -184,7 +217,7 @@ CI: `.github/workflows/pr.yml` (PR: `make test` + `make app`), `.github/workflow
 
 ## Tests
 
-Unit tests in `Tests/CodexBarTests/`:
+Unit tests in `Tests/CodexGatewayTests/`:
 
 - `TranslatorTests` — translation, namespace mapping, think stripping
 - `CodexConfigTests` — managed block stripping

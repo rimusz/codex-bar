@@ -1,9 +1,13 @@
 import Foundation
 
 enum UpdateSettingsKeys {
-  static let autoCheckEnabled = "codexbar.updates.autoCheckEnabled"
-  static let dismissedVersion = "codexbar.updates.dismissedVersion"
-  static let lastCheckDate = "codexbar.updates.lastCheckDate"
+  static let autoCheckEnabled = "codexgateway.updates.autoCheckEnabled"
+  static let dismissedVersion = "codexgateway.updates.dismissedVersion"
+  static let lastCheckDate = "codexgateway.updates.lastCheckDate"
+
+  static let legacyAutoCheckEnabled = "codexbar.updates.autoCheckEnabled"
+  static let legacyDismissedVersion = "codexbar.updates.dismissedVersion"
+  static let legacyLastCheckDate = "codexbar.updates.lastCheckDate"
 }
 
 enum UpdateSettingsStore {
@@ -12,6 +16,7 @@ enum UpdateSettingsStore {
 
   static var autoCheckEnabled: Bool {
     get {
+      migrateLegacyDefaultsIfNeeded()
       if UserDefaults.standard.object(forKey: UpdateSettingsKeys.autoCheckEnabled) == nil {
         return true
       }
@@ -24,6 +29,7 @@ enum UpdateSettingsStore {
 
   static var dismissedVersion: String? {
     get {
+      migrateLegacyDefaultsIfNeeded()
       let value = UserDefaults.standard.string(forKey: UpdateSettingsKeys.dismissedVersion)?
         .trimmingCharacters(in: .whitespacesAndNewlines)
       return value?.isEmpty == false ? value : nil
@@ -39,7 +45,8 @@ enum UpdateSettingsStore {
 
   static var lastCheckDate: Date? {
     get {
-      UserDefaults.standard.object(forKey: UpdateSettingsKeys.lastCheckDate) as? Date
+      migrateLegacyDefaultsIfNeeded()
+      return UserDefaults.standard.object(forKey: UpdateSettingsKeys.lastCheckDate) as? Date
     }
     set {
       if let newValue {
@@ -57,6 +64,32 @@ enum UpdateSettingsStore {
 
   static func skipVersion(_ version: String) {
     dismissedVersion = UpdateChecker.normalizedVersion(version)
-    NotificationCenter.default.post(name: .codexBarUpdateStateChanged, object: nil)
+    NotificationCenter.default.post(name: .codexGatewayUpdateStateChanged, object: nil)
+  }
+
+  /// Copies legacy `codexbar.updates.*` keys into `codexgateway.updates.*` once.
+  static func migrateLegacyDefaultsIfNeeded(defaults: UserDefaults = .standard) {
+    migrateKey(
+      from: UpdateSettingsKeys.legacyAutoCheckEnabled,
+      to: UpdateSettingsKeys.autoCheckEnabled,
+      defaults: defaults
+    )
+    migrateKey(
+      from: UpdateSettingsKeys.legacyDismissedVersion,
+      to: UpdateSettingsKeys.dismissedVersion,
+      defaults: defaults
+    )
+    migrateKey(
+      from: UpdateSettingsKeys.legacyLastCheckDate,
+      to: UpdateSettingsKeys.lastCheckDate,
+      defaults: defaults
+    )
+  }
+
+  private static func migrateKey(from legacy: String, to current: String, defaults: UserDefaults) {
+    guard defaults.object(forKey: current) == nil,
+          let value = defaults.object(forKey: legacy) else { return }
+    defaults.set(value, forKey: current)
+    defaults.removeObject(forKey: legacy)
   }
 }

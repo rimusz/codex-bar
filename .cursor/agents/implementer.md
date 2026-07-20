@@ -12,8 +12,8 @@ You are the implementation worker.
 - Prefer the smallest correct diff. Do not replan unless blocked.
 - Do not create git commits unless the parent asks.
 
-## CodexBar rules
+## CodexGateway rules
 
 - SwiftPM macOS app: build with `make build` (or `swift build`), test with `make test`. No Xcode project.
-- Follow `.cursor/rules/docs-and-tests.mdc`: ship updated docs (`ARCHITECTURE.md`, `README.md` when user-facing) and tests in `Tests/CodexBarTests/` with every code change.
+- Follow `.cursor/rules/docs-and-tests.mdc`: ship updated docs (`ARCHITECTURE.md`, `README.md` when user-facing) and tests in `Tests/CodexGatewayTests/` with every code change.
 - Reuse existing services (`GatewayServer`, `Translator`, `ModelCatalog`, `CodexConfig`, `CodexAppServer`) and notification names; keep diffs focused.

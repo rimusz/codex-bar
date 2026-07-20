@@ -1,6 +1,6 @@
-# Building CodexBar
+# Building CodexGateway
 
-CodexBar is built with **Swift Package Manager** (SPM). No Xcode project is required.
+CodexGateway is built with **Swift Package Manager** (SPM). No Xcode project is required.
 
 ## Minimal setup
 
@@ -14,45 +14,64 @@ xcode-select --install
 
 ```bash
 make build          # or: swift build -c release
-make run            # builds + launches .build/CodexBar.app (release)
+make run            # builds + launches .build/CodexGateway.app (release)
 make run-debug      # debug build + launch
-make app            # creates dist/CodexBar.app + DMG
-make install        # copy dist/CodexBar.app to /Applications/
+make app            # creates dist/CodexGateway.app + DMG
+make install        # copy dist/CodexGateway.app to /Applications/
 ```
 
 You can also run the raw binary:
 
 ```bash
 swift build -c release
-./.build/release/CodexBar
+./.build/release/CodexGateway
 ```
 
-`make run` uses `scripts/build-dev-app.sh` for a lightweight `.app` wrapper; `make app` produces a full `dist/CodexBar.app` for distribution. Both wrappers generate `AppIcon.icns` from the root `AppIcon.png` so Dock, app switcher, and confirmation dialogs use the CodexBar icon.
+`make run` uses `scripts/build-dev-app.sh` for a lightweight `.app` wrapper; `make app` produces a full `dist/CodexGateway.app` for distribution. Both wrappers generate `AppIcon.icns` from the root `AppIcon.png` so Dock, app switcher, and confirmation dialogs use the CodexGateway icon.
 
 ## Packaging
 
 ```bash
-make app     # creates dist/CodexBar.app + dist/CodexBar-macOS.dmg
+make app     # creates dist/CodexGateway.app + dist/CodexGateway-macOS.dmg
 make dmg     # same, with optional signing/notarization from .env
 ```
 
 Output:
 
-- `dist/CodexBar.app`
-- `dist/CodexBar-macOS.dmg`
+- `dist/CodexGateway.app`
+- `dist/CodexGateway-macOS.dmg`
 
-GitHub release assets use versioned names, e.g. `CodexBar-v1.0.0.app.zip` and `CodexBar-v1.0.0-macOS.dmg`. The in-app updater downloads `CodexBar-{tag}.app.zip` from the newest **notarized** release only (`v{VERSION} (Notarized)` title or notarization phrase in release notes). Unsigned CI releases are for manual install.
+GitHub release assets use versioned names, e.g. `CodexGateway-v1.0.0.app.zip`, legacy `CodexBar-v1.0.0.app.zip` (same build for older updaters), and `CodexGateway-v1.0.0-macOS.dmg`. The in-app updater downloads `CodexGateway-{tag}.app.zip` from the newest **notarized** release only (`v{VERSION} (Notarized)` title or notarization phrase in release notes); it also accepts the legacy `CodexBar-{tag}.app.zip` asset. Unsigned CI releases are for manual install.
+
+### Identity
+
+| Item | Value |
+|------|--------|
+| Bundle ID | `com.rimusz.CodexGateway` |
+| Config dir | `~/.codexgateway` |
+| Install helper | `Contents/Resources/codexgateway-install-update` |
+| GitHub repo | `rimusz/codex-bar` |
+
+### Upgrade / legacy (from CodexBar)
+
+| Item | Legacy |
+|------|--------|
+| Bundle ID | `com.rimusz.CodexBar` — re-enable Open at Login after upgrade if needed |
+| Config dir | `~/.codexbar` → auto-migrated to `~/.codexgateway` |
+| Install helper | legacy `codexbar-install-update` |
+| Release asset | legacy `CodexBar-{tag}.app.zip` for older updaters |
+| App folder | `CodexBar.app` → `CodexGateway.app` on install or in-app update |
 
 ## Scripts
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/build-macos-app.sh` | Assemble `dist/CodexBar.app`, optional `--sign` |
-| `scripts/build-dev-app.sh` | Lightweight `.build/CodexBar.app` for `make run` |
+| `scripts/build-macos-app.sh` | Assemble `dist/CodexGateway.app`, optional `--sign` |
+| `scripts/build-dev-app.sh` | Lightweight `.build/CodexGateway.app` for `make run` |
 | `scripts/codesign-app-bundle.sh` | Ad-hoc or Developer ID codesign with `entitlements.plist` |
 | `scripts/notarize.sh` | Submit signed app to Apple notary service + staple |
 | `scripts/release.sh` | Local GitHub release publish (`make release`) |
-| `scripts/codexbar-install-update.sh` | Bundled helper for in-app update install (`Contents/Resources/codexbar-install-update`) |
+| `scripts/codexgateway-install-update.sh` | Bundled helper for in-app update install (`Contents/Resources/codexgateway-install-update`) |
 
 ## Codesigning / distribution
 
@@ -76,8 +95,8 @@ make release RELEASE_TYPE=notarized
 
 macOS may block unsigned apps on first open:
 
-1. Right-click `CodexBar.app` → **Open**
-2. `xattr -cr /Applications/CodexBar.app`
+1. Right-click `CodexGateway.app` → **Open**
+2. `xattr -cr /Applications/CodexGateway.app`
 3. System Settings → Privacy & Security → **Open Anyway**
 
 ## Versioning
@@ -139,3 +158,5 @@ make release
 ```bash
 make release RELEASE_TYPE=notarized
 ```
+
+Release uploads three assets per version: `CodexGateway-{tag}.app.zip`, legacy `CodexBar-{tag}.app.zip`, and `CodexGateway-{tag}-macOS.dmg`.

@@ -8,9 +8,9 @@ class APIClient: NSObject {
     URLSession.shared.dataTask(with: url) { _, response, _ in
       DispatchQueue.main.async {
         if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
-          NotificationCenter.default.post(name: .init("CodexBarStatusChanged"), object: AppStatus.idle)
+          NotificationCenter.default.post(name: .init("CodexGatewayStatusChanged"), object: AppStatus.idle)
         } else {
-          NotificationCenter.default.post(name: .init("CodexBarStatusChanged"), object: AppStatus.offline)
+          NotificationCenter.default.post(name: .init("CodexGatewayStatusChanged"), object: AppStatus.offline)
         }
       }
     }.resume()

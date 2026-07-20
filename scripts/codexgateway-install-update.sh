@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# In-app update helper. Bundled as Resources/codexgateway-install-update.
+# Supports renaming CodexBar.app → CodexGateway.app via --remove-legacy.
+
 TARGET=""
 NEW_APP=""
 PID=""
+REMOVE_LEGACY=""
 RELAUNCH=1
 RELAUNCH_ONLY=0
 
@@ -21,6 +25,10 @@ while [[ $# -gt 0 ]]; do
             PID="$2"
             shift 2
             ;;
+        --remove-legacy)
+            REMOVE_LEGACY="$2"
+            shift 2
+            ;;
         --relaunch-only)
             RELAUNCH_ONLY=1
             shift
@@ -30,7 +38,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         -h|--help)
-            echo "Usage: $0 --target PATH (--new-app PATH | --relaunch-only) --pid PID [--no-relaunch]"
+            echo "Usage: $0 --target PATH (--new-app PATH | --relaunch-only) --pid PID [--remove-legacy PATH] [--no-relaunch]"
             exit 0
             ;;
         *)
@@ -42,7 +50,7 @@ done
 
 if [[ -z "$TARGET" || -z "$PID" ]]; then
     echo "Missing required arguments." >&2
-    echo "Usage: $0 --target PATH (--new-app PATH | --relaunch-only) --pid PID [--no-relaunch]" >&2
+    echo "Usage: $0 --target PATH (--new-app PATH | --relaunch-only) --pid PID [--remove-legacy PATH] [--no-relaunch]" >&2
     exit 2
 fi
 
@@ -55,11 +63,6 @@ if [[ "$RELAUNCH_ONLY" -eq 0 ]]; then
         echo "New app bundle not found: $NEW_APP" >&2
         exit 1
     fi
-fi
-
-if [[ ! -d "$TARGET" ]]; then
-    echo "Target app bundle not found: $TARGET" >&2
-    exit 1
 fi
 
 for _ in $(seq 1 120); do
@@ -75,8 +78,14 @@ if kill -0 "$PID" 2>/dev/null; then
 fi
 
 if [[ "$RELAUNCH_ONLY" -eq 0 ]]; then
+    mkdir -p "$(dirname "$TARGET")"
+    rm -rf "$TARGET"
     ditto "$NEW_APP" "$TARGET"
     xattr -cr "$TARGET" 2>/dev/null || true
+
+    if [[ -n "$REMOVE_LEGACY" && -d "$REMOVE_LEGACY" && "$REMOVE_LEGACY" != "$TARGET" ]]; then
+        rm -rf "$REMOVE_LEGACY"
+    fi
 fi
 
 if [[ "$RELAUNCH_ONLY" -eq 1 || "$RELAUNCH" -eq 1 ]]; then

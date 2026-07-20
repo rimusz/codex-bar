@@ -1,7 +1,7 @@
 import Foundation
 
 enum GatewayLog {
-  private static let logFile = "/tmp/codexbar_debug.log"
+  private static let logFile = "/tmp/codexgateway_debug.log"
 
   static func info(_ message: String) {
     log("[Gateway] \(message)")

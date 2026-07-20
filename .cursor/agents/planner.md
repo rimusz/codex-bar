@@ -13,7 +13,7 @@ You are a read-only planning subagent.
 - Call out ordering/dependencies and which tasks can run in parallel.
 - Return the task list only — do not implement.
 
-## CodexBar context
+## CodexGateway context
 
 - `ARCHITECTURE.md` is the canonical app map (gateway routes, services, config paths, common-tasks lookup) — plan against it.
 - Definition of done must include `make test` passing and doc updates per `.cursor/rules/docs-and-tests.mdc` for any code change.

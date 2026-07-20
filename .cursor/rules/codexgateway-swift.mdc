@@ -1,6 +1,6 @@
 ---
-description: Swift and AppKit conventions for CodexBar
-globs: CodexBar/**/*.swift
+description: Swift and AppKit conventions for CodexGateway
+globs: CodexGateway/**/*.swift
 alwaysApply: false
 ---
 
@@ -9,7 +9,7 @@ alwaysApply: false
 ## Conventions
 
 - Match existing naming and file placement (`Services/` for gateway/config logic; top-level for app shell).
-- Cross-feature coordination via `NotificationCenter` (e.g. `CodexBarStatusChanged`).
+- Cross-feature coordination via `NotificationCenter` (e.g. `CodexGatewayStatusChanged`, `CodexGatewayUpdateAvailable`).
 - Prefer extending existing types over new abstractions for one-off logic.
 
 ## App shell

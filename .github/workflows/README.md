@@ -1,6 +1,6 @@
 # GitHub Actions workflows
 
-CI/CD for CodexBar on `macos-latest`. See [BUILDING.md](../../BUILDING.md#github-releases) for release prep and the local `make release` alternative (including notarized builds).
+CI/CD for CodexGateway on `macos-latest`. See [BUILDING.md](../../BUILDING.md#github-releases) for release prep and the local `make release` alternative (including notarized builds).
 
 | Workflow | File | When it runs |
 |----------|------|--------------|
@@ -30,7 +30,7 @@ One run per ref (`pr-checks-${{ github.ref }}`). A newer push cancels an in-prog
 | Show Swift version | `swift --version` |
 | Run tests | `make test` |
 | Build unsigned app | `make app` |
-| Verify bundle | Asserts `dist/CodexBar.app` exists and `Contents/MacOS/CodexBar` is executable |
+| Verify bundle | Asserts `dist/CodexGateway.app` exists and `Contents/MacOS/CodexGateway` is executable |
 
 ### What it does **not** do
 
@@ -93,8 +93,9 @@ No Apple signing secrets required. Release title: **`v{VERSION} (Unsigned)`**. N
 
 | Asset | Purpose |
 |-------|---------|
-| `CodexBar-{tag}.app.zip` | Portable app bundle |
-| `CodexBar-{tag}-macOS.dmg` | DMG installer |
+| `CodexGateway-{tag}.app.zip` | Portable app bundle |
+| `CodexBar-{tag}.app.zip` | Same build, legacy filename for older updaters |
+| `CodexGateway-{tag}-macOS.dmg` | DMG installer |
 
 ### Local equivalents
 

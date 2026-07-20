@@ -1,10 +1,10 @@
-# CodexBar
+# CodexGateway
 
 **Use any OpenAI-compatible model in Codex Desktop — from a macOS menu bar app.**
 
-Codex Desktop normally talks only to OpenAI's own models. CodexBar sits quietly in your menu bar and runs a tiny local gateway that lets Codex route to **third-party providers** (xAI, DeepSeek, OpenRouter, Z.ai, Kimi, Qwen, MiniMax, Cline Pass, …) or **local models** (Ollama) — while still passing native GPT/ChatGPT requests straight through to OpenAI. You manage everything from a native **Settings** window; no terminal or browser required.
+Codex Desktop normally talks only to OpenAI's own models. CodexGateway sits quietly in your menu bar and runs a tiny local gateway that lets Codex route to **third-party providers** (xAI, DeepSeek, OpenRouter, Z.ai, Kimi, Qwen, MiniMax, Cline Pass, …) or **local models** (Ollama) — while still passing native GPT/ChatGPT requests straight through to OpenAI. You manage everything from a native **Settings** window; no terminal or browser required.
 
-![CodexBar Settings and menu bar](docs/screenshots/settings-and-menu.png)
+![CodexGateway Settings and menu bar](docs/screenshots/settings-and-menu.png)
 
 > Providers must expose an OpenAI-compatible `/chat/completions` endpoint. (Cursor's API, for example, only lists models and has no public chat-completions endpoint, so it can't be used here.)
 
@@ -16,7 +16,7 @@ Codex Desktop normally talks only to OpenAI's own models. CodexBar sits quietly 
 Codex Desktop
      │  HTTP (loopback)
      ▼
-CodexBar gateway — 127.0.0.1:8765
+CodexGateway gateway — 127.0.0.1:8765
      │
      ├─ custom model → third-party provider API   (Responses ⇄ Chat Completions)
      └─ native GPT   → OpenAI / ChatGPT backend    (passed through unchanged)
@@ -32,7 +32,7 @@ CodexBar gateway — 127.0.0.1:8765
 - **Native GPT pass-through** — official OpenAI / ChatGPT requests are untouched
 - **No Codex sign-in needed for local-only use** (e.g. Ollama); sign-in is only required for native GPT/ChatGPT
 - **Menu bar status** with live gateway state + port, and a native Settings window
-- **Open at Login** — optional menu-bar toggle so CodexBar starts with macOS
+- **Open at Login** — optional menu-bar toggle so CodexGateway starts with macOS
 - **Friendly model names** auto-generated from provider model IDs (editable)
 - **Loopback-only gateway** — no management endpoints over HTTP, nothing reachable from the LAN
 - **In-app updates** from GitHub Releases (one-click install for notarized builds)
@@ -49,15 +49,25 @@ Download the latest `.dmg` from [Releases](https://github.com/rimusz/codex-bar/r
 
 ```bash
 make run            # build + launch the menu bar app
-make app            # build dist/CodexBar.app + DMG
+make app            # build dist/CodexGateway.app + DMG
 make install        # copy the app to /Applications/
 ```
 
 See [BUILDING.md](BUILDING.md) for packaging, code signing, notarization, and publishing releases.
 
+## Upgrading from CodexBar
+
+CodexGateway is the new name for CodexBar. Existing installs upgrade smoothly:
+
+- **Install the new app** from [Releases](https://github.com/rimusz/codex-bar/releases) or use **Check for Updates…** in the menu bar (in-app update works from notarized CodexBar builds too).
+- **Your settings are kept** — providers, models, and keys migrate from `~/.codexbar` to `~/.codexgateway` on first launch; no re-configuration needed.
+- **Bundle ID changed** to `com.rimusz.CodexGateway` — macOS treats this as a new app. If you had **Open at Login** enabled, turn it on again from the menu bar after upgrading.
+- **Codex config is updated** — the managed block in `~/.codex/config.toml` is rewritten from `codexbar` → `codexgateway` on **Update Gateway Config** or when an existing managed block is refreshed automatically.
+- **On first launch or in-app update**, `CodexBar.app` in `/Applications` is replaced by `CodexGateway.app` (the legacy copy is removed).
+
 ## Quick start
 
-1. Launch CodexBar — a status icon appears in the menu bar.
+1. Launch CodexGateway — a status icon appears in the menu bar.
 2. (Optional) Menu bar → **Open at Login** so the gateway starts automatically after reboot.
 3. Open **Settings** (menu bar → Settings, or ⌘,).
 4. **Install a provider preset** and enter its API key (skipped for keyless providers like Ollama).
@@ -92,19 +102,19 @@ Doubled vendor prefixes are collapsed, and any name you edit yourself is preserv
 
 ### When does Codex need a restart?
 
-Only when you **add, edit, or delete a model** — those change Codex's exported picker catalog, and Settings will surface a **Restart Codex** button. **Provider** changes (including installing a preset) take effect **immediately** — the gateway reads endpoints and keys live from `~/.codexbar/providers.json`, so no restart is required.
+Only when you **add, edit, or delete a model** — those change Codex's exported picker catalog, and Settings will surface a **Restart Codex** button. **Provider** changes (including installing a preset) take effect **immediately** — the gateway reads endpoints and keys live from `~/.codexgateway/providers.json`, so no restart is required.
 
 The menu-bar **Restart Codex** action (⌘R) always asks for confirmation first.
 
 ### Open at Login
 
-Menu bar → **Open at Login** toggles whether CodexBar launches when you sign in to macOS (via `SMAppService`). A checkmark means it is enabled. The first time you turn it on, macOS may ask you to allow CodexBar under **System Settings → General → Login Items & Extensions** — CodexBar offers a shortcut to that pane when approval is required.
+Menu bar → **Open at Login** toggles whether CodexGateway launches when you sign in to macOS (via `SMAppService`). A checkmark means it is enabled. The first time you turn it on, macOS may ask you to allow CodexGateway under **System Settings → General → Login Items & Extensions** — CodexGateway offers a shortcut to that pane when approval is required.
 
 ### Reset / Update Gateway Config
 
-This button toggles based on whether Codex's config already matches your CodexBar models:
+This button toggles based on whether Codex's config already matches your CodexGateway models:
 
-- **Reset Gateway Config** (in sync) — removes *only Codex's* managed block + exported catalog so Codex stops routing through CodexBar. **Your CodexBar providers and models are kept.**
+- **Reset Gateway Config** (in sync) — removes *only Codex's* managed block + exported catalog so Codex stops routing through CodexGateway. **Your `~/.codexgateway` providers and models are kept.**
 - **Update Gateway Config** (out of date, e.g. after a reset or newly added models) — re-applies your providers/models to Codex.
 
 Either action restarts Codex.
@@ -115,34 +125,34 @@ The gateway binds to `127.0.0.1` only, so it is **never reachable from the local
 
 ## Configuration files
 
-CodexBar keeps its own data under `~/.codexbar/` and writes only a clearly-marked managed block into Codex's config.
+CodexGateway keeps its own data under `~/.codexgateway/` and writes only a clearly-marked managed block into Codex's config.
 
 | Path | Purpose |
 |---|---|
-| `~/.codexbar/providers.json` | Provider endpoints + API keys (read live by the gateway) |
-| `~/.codexbar/custom_model_catalog.json` | Your installed models + routing metadata |
-| `~/.codexbar/fetched_models.json` | Cache of provider model lists |
-| `~/.codex/config.toml` | Codex config — CodexBar patches a managed block only |
+| `~/.codexgateway/providers.json` | Provider endpoints + API keys (read live by the gateway) |
+| `~/.codexgateway/custom_model_catalog.json` | Your installed models + routing metadata |
+| `~/.codexgateway/fetched_models.json` | Cache of provider model lists |
+| `~/.codex/config.toml` | Codex config — CodexGateway patches a managed block only |
 | `~/.codex/model-catalogs/custom-providers.json` | Codex picker export (native models **plus** your custom ones) |
 
-The exported picker catalog always includes the native ChatGPT/Codex models, so installing CodexBar never hides the built-in choices.
+The exported picker catalog always includes the native ChatGPT/Codex models, so installing CodexGateway never hides the built-in choices.
 
 ## Updates
 
 Menu bar → **Check for Updates…** (⌘U) checks GitHub for a newer **notarized** release and can **download, verify, install, and relaunch** in one flow (same pattern as [GrokBuild Desktop](https://github.com/rimusz/grok-build-desktop)):
 
-1. **Update App** — downloads `CodexBar-{tag}.app.zip` and verifies the signature  
-2. **Install and Restart** — replaces the running app via the bundled `codexbar-install-update` helper and relaunches  
+1. **Update App** — downloads `CodexGateway-{tag}.app.zip` and verifies the signature (legacy `CodexBar-{tag}.app.zip` is also published for older updaters)
+2. **Install and Restart** — replaces the running app via the bundled `codexgateway-install-update` helper and relaunches  
 
-Only **notarized** releases with a `.app.zip` asset are installable in-app (**Update App**). Unsigned CI releases are ignored (use the DMG from GitHub manually). If the panel says an update is available but only offers **Open Release Page**, the GitHub release is missing the `CodexBar-{tag}.app.zip` asset. If you previously chose **Skip This Version**, **Check for Updates…** still offers **Update App** so you can install later.
+Only **notarized** releases with a `.app.zip` asset are installable in-app (**Update App**). Unsigned CI releases are ignored (use the DMG from GitHub manually). If the panel says an update is available but only offers **Open Release Page**, the GitHub release is missing the `CodexGateway-{tag}.app.zip` asset. If you previously chose **Skip This Version**, **Check for Updates…** still offers **Update App** so you can install later.
 
 Unsigned CI releases are published for manual install only.
 
-## Using CodexBar with [Zero](https://zero.gitlawb.com)
+## Using CodexGateway with [Zero](https://zero.gitlawb.com)
 
-[Zero](https://zero.gitlawb.com) is a terminal coding agent that supports any **OpenAI-compatible** API. You can point it at the CodexBar gateway on the same Mac and use the models you configured in CodexBar Settings — Cline Pass, Ollama, DeepSeek, xAI via your keys, and so on.
+[Zero](https://zero.gitlawb.com) is a terminal coding agent that supports any **OpenAI-compatible** API. You can point it at the CodexGateway gateway on the same Mac and use the models you configured in CodexGateway Settings — Cline Pass, Ollama, DeepSeek, xAI via your keys, and so on.
 
-CodexBar must be **running** (menu bar icon present). The gateway is local-only:
+CodexGateway must be **running** (menu bar icon present). The gateway is local-only:
 
 | Item | Value |
 |------|--------|
@@ -150,43 +160,43 @@ CodexBar must be **running** (menu bar icon present). The gateway is local-only:
 | Health | `http://127.0.0.1:8765/health` |
 | Model list | `GET http://127.0.0.1:8765/v1/models` |
 
-Provider API keys live in CodexBar (`~/.codexbar/providers.json`); Zero only needs a **dummy** credential so its `custom-openai-compatible` profile passes auth checks.
+Provider API keys live in CodexGateway (`~/.codexgateway/providers.json`); Zero only needs a **dummy** credential so its `custom-openai-compatible` profile passes auth checks.
 
 ### Prerequisites
 
-1. CodexBar is running and the gateway is healthy:
+1. CodexGateway is running and the gateway is healthy:
 
    ```bash
    curl -s http://127.0.0.1:8765/health
    ```
 
-2. Models are installed in **CodexBar → Settings** (providers + models, **Update Gateway Config** if needed).
+2. Models are installed in **CodexGateway → Settings** (providers + models, **Update Gateway Config** if needed).
 
 3. [Zero](https://zero.gitlawb.com) is installed (`npm install -g @gitlawb/zero` or see Zero's install docs).
 
 ### One-time setup (CLI)
 
-Add CodexBar as a **Custom OpenAI-compatible** provider. Use catalog id `custom-openai-compatible` (not a made-up name like `codexbar`):
+Add CodexGateway as a **Custom OpenAI-compatible** provider. Use catalog id `custom-openai-compatible` (not a made-up name like `codexgateway`):
 
 ```bash
 zero providers add custom-openai-compatible \
-  --name codexbar \
+  --name codexgateway \
   --base-url http://127.0.0.1:8765/v1 \
   --model clinepass/cline-pass-glm-5.2 \
   --auth-header-value not-used \
   --set-active
 ```
 
-- `--name codexbar` — your profile label (any name you like).
-- `--model` — default model slug; pick one from `zero providers models codexbar` (see below).
-- `--auth-header-value not-used` — stored dummy key (CodexBar ignores it for custom models; Zero requires *something* for this profile type).
+- `--name codexgateway` — your profile label (any name you like).
+- `--model` — default model slug; pick one from `zero providers models codexgateway` (see below).
+- `--auth-header-value not-used` — stored dummy key (CodexGateway ignores it for custom models; Zero requires *something* for this profile type).
 
 **Alternative:** set an env var instead of storing a key:
 
 ```bash
 export OPENAI_API_KEY=not-used
 zero providers add custom-openai-compatible \
-  --name codexbar \
+  --name codexgateway \
   --base-url http://127.0.0.1:8765/v1 \
   --model clinepass/cline-pass-glm-5.2 \
   --api-key-env OPENAI_API_KEY \
@@ -196,12 +206,12 @@ zero providers add custom-openai-compatible \
 ### Verify setup
 
 ```bash
-zero providers check codexbar --connectivity
-zero providers models codexbar
+zero providers check codexgateway --connectivity
+zero providers models codexgateway
 zero providers current
 ```
 
-You want `status: ok` and `connectivity: pass`. `zero providers models codexbar` lists every slug the gateway exposes (custom + native GPT slugs).
+You want `status: ok` and `connectivity: pass`. `zero providers models codexgateway` lists every slug the gateway exposes (custom + native GPT slugs).
 
 ### CLI — providers & models
 
@@ -209,16 +219,16 @@ You want `status: ok` and `connectivity: pass`. `zero providers models codexbar`
 |---------|---------|
 | `zero providers list` | All saved provider profiles |
 | `zero providers current` | Active provider + model |
-| `zero providers use codexbar` | Switch to the CodexBar profile |
-| `zero providers models codexbar` | Live list from CodexBar `/v1/models` |
-| `zero providers check codexbar --connectivity` | Auth + reachability |
+| `zero providers use codexgateway` | Switch to the CodexGateway profile |
+| `zero providers models codexgateway` | Live list from CodexGateway `/v1/models` |
+| `zero providers check codexgateway --connectivity` | Auth + reachability |
 | `zero providers catalog` | Built-in provider types (`custom-openai-compatible`, etc.) |
 
 **Change default model** on the profile (re-run add with a new `--model`):
 
 ```bash
 zero providers add custom-openai-compatible \
-  --name codexbar \
+  --name codexgateway \
   --base-url http://127.0.0.1:8765/v1 \
   --model clinepass/cline-pass-kimi-k2.7-code \
   --auth-header-value not-used \
@@ -231,46 +241,46 @@ zero providers add custom-openai-compatible \
 # One-shot prompt (uses active provider unless --model overrides)
 zero exec "explain this repo"
 
-# Explicit model slug from CodexBar
+# Explicit model slug from CodexGateway
 zero exec --model clinepass/cline-pass-glm-5.2 "fix the failing test in ./pkg"
 
 # Scriptable / CI-style I/O
 zero exec --output-format stream-json "summarize main.go"
 ```
 
-Model slugs must match **`zero providers models codexbar`** exactly (e.g. `clinepass/cline-pass-glm-5.2`, not the raw Cline Pass upstream id).
+Model slugs must match **`zero providers models codexgateway`** exactly (e.g. `clinepass/cline-pass-glm-5.2`, not the raw Cline Pass upstream id).
 
 ### TUI — interactive terminal
 
-Start Zero with the **codexbar** profile already active (do this in a normal terminal, not inside the TUI):
+Start Zero with the **codexgateway** profile already active (do this in a normal terminal, not inside the TUI):
 
 ```bash
-zero providers use codexbar
+zero providers use codexgateway
 zero
 ```
 
-If you used `--set-active` when you ran `zero providers add`, **codexbar** is already the active profile — you can run `zero` directly. Check anytime:
+If you used `--set-active` when you ran `zero providers add`, **codexgateway** is already the active profile — you can run `zero` directly. Check anytime:
 
 ```bash
 zero providers current
 ```
 
-Inside the TUI, `/config` or the bottom status line shows the active provider and model (you want **codexbar** · your model slug).
+Inside the TUI, `/config` or the bottom status line shows the active provider and model (you want **codexgateway** · your model slug).
 
-> **`/provider` is for managing providers** (add / edit / delete), not for switching. Use **`zero providers use codexbar`** in a shell before launching `zero`, or rely on `--set-active` from setup.
+> **`/provider` is for managing providers** (add / edit / delete), not for switching. Use **`zero providers use codexgateway`** in a shell before launching `zero`, or rely on `--set-active` from setup.
 
 #### Changing the model in TUI
 
-CodexBar models are **not** reliably listed in Zero's `/model` search picker. Use one of these methods instead:
+CodexGateway models are **not** reliably listed in Zero's `/model` search picker. Use one of these methods instead:
 
 **Method 1 — `/model <slug>` (best for switching mid-session)**
 
-1. Confirm **codexbar** is active (status bar or `/config`). If not, exit the TUI and run `zero providers use codexbar`, then `zero` again.
+1. Confirm **codexgateway** is active (status bar or `/config`). If not, exit the TUI and run `zero providers use codexgateway`, then `zero` again.
 
 2. In another terminal, list valid slugs:
 
    ```bash
-   zero providers models codexbar
+   zero providers models codexgateway
    ```
 
 3. In the Zero TUI, switch model by typing the **full slug** (no picker needed):
@@ -295,7 +305,7 @@ Change the profile's default model, then launch `zero`:
 
 ```bash
 zero providers add custom-openai-compatible \
-  --name codexbar \
+  --name codexgateway \
   --base-url http://127.0.0.1:8765/v1 \
   --model clinepass/cline-pass-kimi-k2.7-code \
   --auth-header-value not-used \
@@ -314,28 +324,28 @@ After you switch with `/model <slug>` once, that model appears under **Recent** 
 
 | Action | How |
 |--------|-----|
-| Switch to CodexBar provider | **`zero providers use codexbar`** (in shell, before or after exiting TUI) |
+| Switch to CodexGateway provider | **`zero providers use codexgateway`** (in shell, before or after exiting TUI) |
 | Add/edit providers in TUI | `/provider add` or `/provider` (manager — not for picking active provider) |
 | Show active provider + model | `/config` or bottom status line; CLI: `zero providers current` |
-| List models | `zero providers models codexbar` |
+| List models | `zero providers models codexgateway` |
 | Check setup | `/doctor` or `zero doctor` |
 
-**`/model` picker limitation:** Zero's graphical model picker uses a static placeholder catalog for `custom-openai-compatible` and often **does not list** CodexBar's live models (searching `cline` may show "no matching models"). This is a Zero behavior, not a CodexBar bug.
+**`/model` picker limitation:** Zero's graphical model picker uses a static placeholder catalog for `custom-openai-compatible` and often **does not list** CodexGateway's live models (searching `cline` may show "no matching models"). This is a Zero behavior, not a CodexGateway bug.
 
-CodexBar models appear under provider group **"Custom OpenAI-compatible"** in `/model`, not "CodexBar". Sections like **xAI** or **MiniMax** in the picker are **other** Zero profiles talking directly to those APIs, not through CodexBar.
+CodexGateway models appear under provider group **"Custom OpenAI-compatible"** in `/model`, not "CodexGateway". Sections like **xAI** or **MiniMax** in the picker are **other** Zero profiles talking directly to those APIs, not through CodexGateway.
 
 ### Troubleshooting
 
 | Symptom | Fix |
 |---------|-----|
-| `unknown provider "codexbar"` on `providers add` | Use catalog id **`custom-openai-compatible`**, not `codexbar`. |
+| `unknown provider "codexgateway"` on `providers add` | Use catalog id **`custom-openai-compatible`**, not `codexgateway`. |
 | `unknown flag "--api-key"` | Use **`--auth-header-value`** or **`--api-key-env`**, not `--api-key`. |
 | `requires API credentials` / connectivity fail | Set **`--auth-header-value not-used`** or `export OPENAI_API_KEY=not-used`. |
 | `zero providers models` works but TUI picker is empty | Use **`/model <full-slug>`** inside TUI (see **Changing the model in TUI** above). |
-| Wrong provider active (xAI, MiniMax, etc.) | Exit TUI; run **`zero providers use codexbar`**, then **`zero`** again. |
-| Connection refused | Start CodexBar; confirm `curl http://127.0.0.1:8765/health`. |
-| Model not found at runtime | Slug must match `zero providers models codexbar`; re-export from CodexBar Settings if you added models recently. |
+| Wrong provider active (xAI, MiniMax, etc.) | Exit TUI; run **`zero providers use codexgateway`**, then **`zero`** again. |
+| Connection refused | Start CodexGateway; confirm `curl http://127.0.0.1:8765/health`. |
+| Model not found at runtime | Slug must match `zero providers models codexgateway`; re-export from CodexGateway Settings if you added models recently. |
 
 ## Contributing
 
-CodexBar is a pure-Swift SwiftPM app (no Xcode project). See [ARCHITECTURE.md](ARCHITECTURE.md) for the app map, gateway routes, config paths, and a "common tasks → files" lookup, and [AGENTS.md](AGENTS.md) for repo conventions.
+CodexGateway is a pure-Swift SwiftPM app (no Xcode project). See [ARCHITECTURE.md](ARCHITECTURE.md) for the app map, gateway routes, config paths, and a "common tasks → files" lookup, and [AGENTS.md](AGENTS.md) for repo conventions.

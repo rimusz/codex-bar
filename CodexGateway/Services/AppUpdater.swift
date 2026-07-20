@@ -88,10 +88,11 @@ final class AppUpdater {
     }
 #endif
 
-    let targetURL = Bundle.main.bundleURL
+    let currentURL = Bundle.main.bundleURL
+    let targetURL = AppIdentity.installTargetURL(from: currentURL)
 
-    guard Self.isInstallTargetWritable(targetURL) else {
-      phase = .failed("Cannot update CodexBar at its current location. Move the app to /Applications and try again.")
+    guard Self.isInstallTargetWritable(currentURL) else {
+      phase = .failed("Cannot update CodexGateway at its current location. Move the app to /Applications and try again.")
       notifyPhaseChanged()
       return
     }
@@ -105,16 +106,21 @@ final class AppUpdater {
     phase = .installing
     notifyPhaseChanged()
 
-    NotificationCenter.default.post(name: .codexBarPrepareForShutdown, object: nil)
+    NotificationCenter.default.post(name: .codexGatewayPrepareForShutdown, object: nil)
 
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: "/bin/bash")
-    process.arguments = [
+    var arguments = [
       helper.path,
       "--target", targetURL.path,
       "--new-app", extractedAppURL.path,
       "--pid", String(getpid()),
     ]
+    if let legacy = AppIdentity.legacyBundleToRemove(currentBundleURL: currentURL, targetURL: targetURL) {
+      arguments += ["--remove-legacy", legacy.path]
+    }
+
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/bin/bash")
+    process.arguments = arguments
     process.standardOutput = FileHandle.nullDevice
     process.standardError = FileHandle.nullDevice
 
@@ -154,7 +160,7 @@ final class AppUpdater {
         }
         guard let tempURL else {
           continuation.resume(throwing: NSError(
-            domain: "CodexBarUpdater",
+            domain: "CodexGatewayUpdater",
             code: 1,
             userInfo: [NSLocalizedDescriptionKey: "Download failed."]
           ))
@@ -209,7 +215,7 @@ final class AppUpdater {
     }
 
     guard let appURL = Self.findAppBundle(in: extractRoot) else {
-      throw Self.updaterError("Downloaded archive did not contain CodexBar.app.")
+      throw Self.updaterError("Downloaded archive did not contain \(AppIdentity.productName).app.")
     }
 
     try Self.verifySignature(for: appURL)
@@ -230,8 +236,11 @@ final class AppUpdater {
       return nil
     }
 
-    if let direct = entries.first(where: { $0.lastPathComponent == "\(UpdateChecker.appName).app" }) {
-      return direct
+    // Prefer the new bundle name, then the pre-rename CodexBar.app, then any .app.
+    for name in [AppIdentity.appBundleName, AppIdentity.legacyAppBundleName] {
+      if let match = entries.first(where: { $0.lastPathComponent == name }) {
+        return match
+      }
     }
     return entries.first(where: { $0.pathExtension == "app" })
   }
@@ -271,8 +280,10 @@ final class AppUpdater {
   }
 
   static func installHelperURL() -> URL? {
-    if let resource = Bundle.main.url(forResource: "codexbar-install-update", withExtension: nil) {
-      return resource
+    for name in [AppIdentity.installHelperResourceName, AppIdentity.legacyInstallHelperResourceName] {
+      if let resource = Bundle.main.url(forResource: name, withExtension: nil) {
+        return resource
+      }
     }
 
     var directory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
@@ -280,7 +291,7 @@ final class AppUpdater {
       let candidate = directory
         .appendingPathComponent("..")
         .appendingPathComponent("scripts")
-        .appendingPathComponent("codexbar-install-update.sh")
+        .appendingPathComponent("codexgateway-install-update.sh")
         .standardized
       if FileManager.default.isExecutableFile(atPath: candidate.path) {
         return candidate
@@ -293,7 +304,7 @@ final class AppUpdater {
 
   static func updatesDirectory() -> URL {
     FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-      .appendingPathComponent("CodexBar", isDirectory: true)
+      .appendingPathComponent(AppIdentity.productName, isDirectory: true)
       .appendingPathComponent("Updates", isDirectory: true)
   }
 
@@ -337,11 +348,11 @@ final class AppUpdater {
   }
 
   private static func updaterError(_ message: String) -> NSError {
-    NSError(domain: "CodexBarUpdater", code: 1, userInfo: [NSLocalizedDescriptionKey: message])
+    NSError(domain: "CodexGatewayUpdater", code: 1, userInfo: [NSLocalizedDescriptionKey: message])
   }
 
   private func notifyPhaseChanged() {
-    NotificationCenter.default.post(name: .codexBarUpdaterPhaseChanged, object: self)
+    NotificationCenter.default.post(name: .codexGatewayUpdaterPhaseChanged, object: self)
   }
 
 #if DEBUG
@@ -376,7 +387,7 @@ final class AppUpdater {
     phase = .installing
     notifyPhaseChanged()
 
-    NotificationCenter.default.post(name: .codexBarPrepareForShutdown, object: nil)
+    NotificationCenter.default.post(name: .codexGatewayPrepareForShutdown, object: nil)
 
     UpdateSettingsStore.skipVersion(UpdateDebugSimulator.simulatedAppVersion)
     UpdateDebugSimulator.clearSimulationFlags()

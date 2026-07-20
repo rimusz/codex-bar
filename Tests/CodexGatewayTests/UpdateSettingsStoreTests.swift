@@ -1,5 +1,5 @@
 import XCTest
-@testable import CodexBar
+@testable import CodexGateway
 
 @MainActor
 final class UpdateSettingsStoreTests: XCTestCase {

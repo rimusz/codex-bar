@@ -36,7 +36,7 @@ enum UpdateDebugSimulator {
       tagName: "v\(simulatedAppVersion)",
       releaseURL: URL(string: "https://github.com/rimusz/codex-bar/releases/latest")!,
       // Non-nil so canInstallInApp is true without relying solely on forceCanInstallInApp.
-      downloadURL: URL(string: "https://example.com/CodexBar-v\(simulatedAppVersion).app.zip"),
+      downloadURL: URL(string: "https://example.com/CodexGateway-v\(simulatedAppVersion).app.zip"),
       publishedAt: Date(),
       updateAvailable: true
     )

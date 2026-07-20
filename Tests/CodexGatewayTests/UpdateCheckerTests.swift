@@ -1,5 +1,5 @@
 import XCTest
-@testable import CodexBar
+@testable import CodexGateway
 
 final class UpdateCheckerTests: XCTestCase {
     func testNormalizedVersionStripsLeadingV() {
@@ -21,24 +21,40 @@ final class UpdateCheckerTests: XCTestCase {
     func testPreferredAppZipAssetNameUsesTag() {
         XCTAssertEqual(
             UpdateChecker.preferredAppZipAssetName(tagName: "v0.2.0"),
-            "CodexBar-v0.2.0.app.zip"
+            "CodexGateway-v0.2.0.app.zip"
         )
     }
 
     func testSelectDownloadAssetPrefersExactMatch() {
         let assets = [
             UpdateChecker.GitHubReleaseAsset(
-                name: "CodexBar-v0.2.0-macOS.dmg",
+                name: "CodexGateway-v0.2.0-macOS.dmg",
                 browserDownloadURL: URL(string: "https://example.com/a.dmg")!
             ),
             UpdateChecker.GitHubReleaseAsset(
-                name: "CodexBar-v0.2.0.app.zip",
+                name: "CodexGateway-v0.2.0.app.zip",
                 browserDownloadURL: URL(string: "https://example.com/a.zip")!
             ),
         ]
 
         let selected = UpdateChecker.selectDownloadAsset(from: assets, tagName: "v0.2.0")
         XCTAssertEqual(selected?.absoluteString, "https://example.com/a.zip")
+    }
+
+    func testSelectDownloadAssetFallsBackToLegacyCodexBarZip() {
+        let assets = [
+            UpdateChecker.GitHubReleaseAsset(
+                name: "CodexBar-v0.2.0-macOS.dmg",
+                browserDownloadURL: URL(string: "https://example.com/legacy.dmg")!
+            ),
+            UpdateChecker.GitHubReleaseAsset(
+                name: "CodexBar-v0.2.0.app.zip",
+                browserDownloadURL: URL(string: "https://example.com/legacy.zip")!
+            ),
+        ]
+
+        let selected = UpdateChecker.selectDownloadAsset(from: assets, tagName: "v0.2.0")
+        XCTAssertEqual(selected?.absoluteString, "https://example.com/legacy.zip")
     }
 
     func testIsNotarizedReleaseDetectsReleaseTitle() {

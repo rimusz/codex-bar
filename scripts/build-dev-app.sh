@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build a lightweight CodexBar.app bundle for local development.
+# Build a lightweight CodexGateway.app bundle for local development.
 # Uses the same bundle identifier as the packaged app.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_NAME="CodexBar"
-EXECUTABLE_NAME="CodexBar"
+APP_NAME="CodexGateway"
+EXECUTABLE_NAME="CodexGateway"
 APP_VERSION="$(tr -d '[:space:]' < "$ROOT_DIR/VERSION")"
 BUILD_DIR="$ROOT_DIR/.build"
 BUILD_CONFIG="${BUILD_CONFIG:-release}"
@@ -25,7 +25,7 @@ mkdir -p "$APP_BUNDLE/Contents/Resources"
 cp "$BINARY_DIR/$EXECUTABLE_NAME" "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE_NAME"
 chmod +x "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE_NAME"
 
-ICONSET_DIR="$ROOT_DIR/CodexBar/Resources/Assets.xcassets/MenuBarIcon.imageset"
+ICONSET_DIR="$ROOT_DIR/CodexGateway/Resources/Assets.xcassets/MenuBarIcon.imageset"
 for icon in MenuBarIcon.png MenuBarIcon@2x.png MenuBarIcon@3x.png; do
     if [ -f "$ICONSET_DIR/$icon" ]; then
         cp "$ICONSET_DIR/$icon" "$APP_BUNDLE/Contents/Resources/$icon"
@@ -61,10 +61,10 @@ if [ -f "$ROOT_DIR/AppIcon.png" ]; then
     generate_app_icon "$ROOT_DIR/AppIcon.png"
 fi
 
-INSTALL_HELPER_SRC="$ROOT_DIR/scripts/codexbar-install-update.sh"
+INSTALL_HELPER_SRC="$ROOT_DIR/scripts/codexgateway-install-update.sh"
 if [ -f "$INSTALL_HELPER_SRC" ]; then
-    cp "$INSTALL_HELPER_SRC" "$APP_BUNDLE/Contents/Resources/codexbar-install-update"
-    chmod +x "$APP_BUNDLE/Contents/Resources/codexbar-install-update"
+    cp "$INSTALL_HELPER_SRC" "$APP_BUNDLE/Contents/Resources/codexgateway-install-update"
+    chmod +x "$APP_BUNDLE/Contents/Resources/codexgateway-install-update"
     echo "==> Bundled in-app update helper"
 fi
 
@@ -84,7 +84,7 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << EOF
     <key>CFBundleExecutable</key>
     <string>$EXECUTABLE_NAME</string>
     <key>CFBundleIdentifier</key>
-    <string>com.rimusz.CodexBar</string>
+    <string>com.rimusz.CodexGateway</string>
     <key>CFBundleName</key>
     <string>$APP_NAME</string>
     <key>CFBundlePackageType</key>

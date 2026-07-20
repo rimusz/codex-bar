@@ -1,6 +1,6 @@
 import XCTest
 import zlib
-@testable import CodexBar
+@testable import CodexGateway
 
 final class LoopbackHTTPServerTests: XCTestCase {
     func testDecodeChunkedBody() throws {

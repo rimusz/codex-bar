@@ -1,5 +1,5 @@
 import XCTest
-@testable import CodexBar
+@testable import CodexGateway
 
 final class FetchedModelsStoreTests: XCTestCase {
     private var tempPath: String!

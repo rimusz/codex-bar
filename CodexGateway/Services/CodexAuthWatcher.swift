@@ -2,7 +2,7 @@ import Foundation
 
 /// Watches `~/.codex` for Codex sign-in changes (`auth.json` created/replaced/removed)
 /// and re-patches the managed config so `requires_openai_auth` follows the current
-/// sign-in state automatically — no CodexBar restart required.
+/// sign-in state automatically — no CodexGateway restart required.
 ///
 /// Watching the directory (rather than the file) is deliberate: Codex writes
 /// `auth.json` atomically (temp file + rename) and sign-in/out create or delete the
@@ -10,7 +10,7 @@ import Foundation
 final class CodexAuthWatcher {
   static let shared = CodexAuthWatcher()
 
-  private let queue = DispatchQueue(label: "com.rimusz.CodexBar.CodexAuthWatcher")
+  private let queue = DispatchQueue(label: "com.rimusz.CodexGateway.CodexAuthWatcher")
   private var source: DispatchSourceFileSystemObject?
   private var directoryFD: CInt = -1
   private var lastSignedIn: Bool
@@ -82,7 +82,7 @@ final class CodexAuthWatcher {
     let current = CodexConfig.isSignedIn()
     guard CodexAuthWatcher.signInStateChanged(previous: lastSignedIn, current: current) else { return }
     lastSignedIn = current
-    // Only refresh if CodexBar is already applied — never inject into native Codex.
+    // Only refresh if CodexGateway is already applied — never inject into native Codex.
     CodexConfig.refreshManagedConfigIfApplied()
     GatewayLog.info("CodexAuthWatcher: sign-in changed (signedIn=\(current)); refreshed managed config if applied")
   }

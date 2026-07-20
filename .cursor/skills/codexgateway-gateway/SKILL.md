@@ -1,13 +1,13 @@
 ---
-name: codexbar-gateway
-description: Works with CodexBar gateway and Codex Desktop integration — HTTP routes, model translation, config patching, catalog management. Use when changing GatewayServer, Translator, ModelCatalog, CodexConfig, or CodexAppServer.
+name: codexgateway-gateway
+description: Works with CodexGateway gateway and Codex Desktop integration — HTTP routes, model translation, config patching, catalog management. Use when changing GatewayServer, Translator, ModelCatalog, CodexConfig, or CodexAppServer.
 ---
 
-# Gateway & Codex in CodexBar
+# Gateway & Codex in CodexGateway
 
 ## Boundaries
 
-CodexBar is a gateway + menu bar companion. Core agent behavior stays in Codex Desktop.
+CodexGateway is a gateway + menu bar companion. Core agent behavior stays in Codex Desktop.
 
 ## Key components
 
@@ -21,7 +21,7 @@ Translator.responsesToChat(...)
 Translator.chatCompletionToResponse(...)
 
 // Config
-ModelCatalog.shared            // ~/.codexbar/
+ModelCatalog.shared            // ~/.codexgateway/
 CodexConfig.patchCodexConfig()            // explicit apply → ~/.codex/config.toml managed blocks
 CodexConfig.refreshManagedConfigIfApplied() // automatic callers; only if block already present
 CodexAppServer.shared          // restart Codex Desktop
@@ -31,22 +31,22 @@ CodexAppServer.shared          // restart Codex Desktop
 
 See `ARCHITECTURE.md` → Gateway routes. The gateway is **minimal and loopback-only** (`LoopbackHTTPServer.start` pins `requiredLocalEndpoint` to `127.0.0.1`): only `/health`, `/api/restart-codex`, `/v1/models`, `/v1/responses`, `/v1/chat/completions`. There are **no HTTP provider/model mutation endpoints and no browser dashboard** — all management is done in-process by the native Settings UI (`ModelCatalog` / `CodexConfig`).
 
-Provider/model add flow (native, not HTTP): installing a preset writes only the provider endpoint/key; Settings then fetches provider models via `ProviderModelFetcher` before adding selected models. Most providers use `GET {base_url}/models`; Cline Pass uses the public recommended-models feed (`GET https://api.cline.bot/api/v1/ai/cline/recommended-models`, no API key) via `fetchClinePassRecommended` / `parseClinePassRecommended` (same path as GrokBuild Desktop). Fetched lists persist in `~/.codexbar/fetched_models.json` and are replaced on the next fetch. `ProviderModelFetcher.parse` accepts OpenAI (`data[]`), bare arrays, and an `items[]` shape (flattening to top-level `id`s and ignoring per-model variants). Note: providers must expose an OpenAI-compatible `/chat/completions` endpoint to actually serve models — a `/models`-only API (e.g. Cursor's) can list models but can't complete, so such providers aren't shipped as presets.
+Provider/model add flow (native, not HTTP): installing a preset writes only the provider endpoint/key; Settings then fetches provider models via `ProviderModelFetcher` before adding selected models. Most providers use `GET {base_url}/models`; Cline Pass uses the public recommended-models feed (`GET https://api.cline.bot/api/v1/ai/cline/recommended-models`, no API key) via `fetchClinePassRecommended` / `parseClinePassRecommended` (same path as GrokBuild Desktop). Fetched lists persist in `~/.codexgateway/fetched_models.json` and are replaced on the next fetch. `ProviderModelFetcher.parse` accepts OpenAI (`data[]`), bare arrays, and an `items[]` shape (flattening to top-level `id`s and ignoring per-model variants). Note: providers must expose an OpenAI-compatible `/chat/completions` endpoint to actually serve models — a `/models`-only API (e.g. Cursor's) can list models but can't complete, so such providers aren't shipped as presets.
 
 ## Config files
 
 | File | Managed by |
 |------|-----------|
-| `~/.codexbar/custom_model_catalog.json` | `ModelCatalog` internal routing catalog |
+| `~/.codexgateway/custom_model_catalog.json` | `ModelCatalog` internal routing catalog |
 | `~/.codex/model-catalogs/custom-providers.json` | `ModelCatalog` Codex-compatible picker catalog export; includes native ChatGPT/Codex models plus custom models. **Custom entries only appear in Codex's picker when signed in** (free account suffices); signed out Codex shows a built-in fallback and labels active custom models as "Custom". `SettingsStore.customModelsNeedSignIn` drives a Settings hint. |
-| `~/.codexbar/providers.json` | `ModelCatalog` |
-| `~/.codex/config.toml` | `CodexConfig` (managed blocks). `requires_openai_auth` follows `CodexConfig.isSignedIn()`: `false` when signed out (no Codex login needed for local-only Ollama/custom), `true` when signed in (native GPT/ChatGPT pass-through). |
+| `~/.codexgateway/providers.json` | `ModelCatalog` |
+| `~/.codex/config.toml` | `CodexConfig` (managed blocks; provider id `codexgateway`). `requires_openai_auth` follows `CodexConfig.isSignedIn()`: `false` when signed out (no Codex login needed for local-only Ollama/custom), `true` when signed in (native GPT/ChatGPT pass-through). Legacy `codexbar` blocks are rewritten on refresh/patch. |
 | `~/.codex/auth.json` | read-only for pass-through token + `isSignedIn()` detection |
 
 ## Status bar integration
 
 - `APIClient.fetchStatus()` polls `/health`
-- Posts `CodexBarStatusChanged` with `AppStatus` on main queue
+- Posts `CodexGatewayStatusChanged` with `AppStatus` on main queue
 
 ## After changing gateway integration
 

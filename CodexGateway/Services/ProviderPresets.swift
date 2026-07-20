@@ -89,7 +89,7 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
     }
   }
 
-  /// Whether CodexBar can discover models via `GET {base_url}/models`.
+  /// Whether CodexGateway can discover models via `GET {base_url}/models`.
   var supportsModelListingFetch: Bool {
     switch self {
     case .clinePass:

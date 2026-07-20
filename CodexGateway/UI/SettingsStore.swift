@@ -17,7 +17,7 @@ final class SettingsStore: ObservableObject {
   @Published var errorMessage: String?
   /// True when providers/models changed and Codex Desktop must restart to pick them up.
   @Published private(set) var needsCodexRestart = false
-  /// True when Codex's config already reflects CodexBar's current models. When false,
+  /// True when Codex's config already reflects CodexGateway's current models. When false,
   /// the gateway action is an "Update" (apply models) rather than a "Reset".
   @Published private(set) var gatewayConfigInSync = true
   /// True when the user is signed in to Codex Desktop. Codex only lists custom
@@ -29,7 +29,7 @@ final class SettingsStore: ObservableObject {
     providers.filter { !$0.name.isEmpty }
   }
 
-  /// True when CodexBar has custom (non-OpenAI) models but Codex is signed out, so
+  /// True when CodexGateway has custom (non-OpenAI) models but Codex is signed out, so
   /// those models won't appear in Codex's picker until the user signs in.
   var customModelsNeedSignIn: Bool {
     SettingsStore.customModelsHidden(signedIn: codexSignedIn, models: models)
@@ -62,13 +62,13 @@ final class SettingsStore: ObservableObject {
   }
 
   /// Codex config is in sync only when the managed block is present and the applied
-  /// custom model set matches CodexBar's current model set.
+  /// custom model set matches CodexGateway's current model set.
   static func gatewayInSync(hasManagedBlock: Bool, applied: Set<String>, desired: Set<String>) -> Bool {
     hasManagedBlock && applied == desired
   }
 
   /// The kinds of change that can flow to Codex. Providers/keys are read live by the
-  /// gateway from `~/.codexbar/providers.json`, so they never require a Codex restart.
+  /// gateway from `~/.codexgateway/providers.json`, so they never require a Codex restart.
   /// Only model catalog changes alter what Codex reads (`custom-providers.json`).
   enum CodexChange {
     case provider
@@ -195,7 +195,7 @@ final class SettingsStore: ObservableObject {
     statusMessage = "Codex restart requested."
   }
 
-  /// Resets only Codex's configuration (managed block + exported catalog). CodexBar's
+  /// Resets only Codex's configuration (managed block + exported catalog). CodexGateway's
   /// providers and models are kept.
   func resetGatewayConfig(
     reset: () -> Void = { CodexConfig.resetToNative() },
@@ -208,7 +208,7 @@ final class SettingsStore: ObservableObject {
     statusMessage = "Codex config reset — your providers and models are kept. Codex restart requested."
   }
 
-  /// Applies CodexBar's current providers and models to Codex's config (re-exports the
+  /// Applies CodexGateway's current providers and models to Codex's config (re-exports the
   /// catalog and patches config.toml), then restarts Codex.
   func updateGatewayConfig(
     sync: () -> Void = { ModelCatalog.shared.syncCodexCatalogExport() },

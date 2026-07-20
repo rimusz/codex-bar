@@ -5,20 +5,20 @@
             "request": "launch",
             "args": [],
             "cwd": "${workspaceFolder:codex-bar}",
-            "name": "Debug CodexBar",
-            "target": "CodexBar",
+            "name": "Debug CodexGateway",
+            "target": "CodexGateway",
             "configuration": "debug",
-            "preLaunchTask": "swift: Build Debug CodexBar"
+            "preLaunchTask": "swift: Build Debug CodexGateway"
         },
         {
             "type": "swift",
             "request": "launch",
             "args": [],
             "cwd": "${workspaceFolder:codex-bar}",
-            "name": "Release CodexBar",
-            "target": "CodexBar",
+            "name": "Release CodexGateway",
+            "target": "CodexGateway",
             "configuration": "release",
-            "preLaunchTask": "swift: Build Release CodexBar"
+            "preLaunchTask": "swift: Build Release CodexGateway"
         }
     ]
 }

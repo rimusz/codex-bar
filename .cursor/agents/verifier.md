@@ -11,8 +11,8 @@ You are a read-only verification subagent.
 - Check tests cover the change when applicable.
 - Return verdict (pass / pass with notes / fail) and gaps. Do not edit files.
 
-## CodexBar checks
+## CodexGateway checks
 
-- Confirm `make test` covers changed behavior (tests added/extended in `Tests/CodexBarTests/`).
+- Confirm `make test` covers changed behavior (tests added/extended in `Tests/CodexGatewayTests/`).
 - Confirm docs are updated per `.cursor/rules/docs-and-tests.mdc` (`ARCHITECTURE.md` for structural changes, `README.md` for user-facing ones).
 - Flag any new Xcode project, unfocused diff, or duplicated gateway/config logic as a gap.

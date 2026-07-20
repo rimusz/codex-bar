@@ -1,5 +1,5 @@
 import XCTest
-@testable import CodexBar
+@testable import CodexGateway
 
 final class ProviderPresetsTests: XCTestCase {
     func testZaiPresetDefinition() {

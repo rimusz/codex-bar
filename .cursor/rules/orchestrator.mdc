@@ -48,7 +48,7 @@ Prefer gates and ownership boundaries over adding tools: a swarm is only as reli
 
 For large or recursive goals, Cursor ships an official `/orchestrate` plugin (recursive planner/verifier/worker swarm on the Cursor SDK): `/add-plugin orchestrate` then `/orchestrate [goal]`. Use it when you want automated fan-out; use this manual rule when you want tight control over each delegation.
 
-## CodexBar specifics
+## CodexGateway specifics
 
 - Read `AGENTS.md` and `ARCHITECTURE.md` first; workers must follow `.cursor/rules/docs-and-tests.mdc`.
 - Build with `make build` (or `swift build`); test with `make test`. Do not add an Xcode project.

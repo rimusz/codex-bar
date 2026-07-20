@@ -1,7 +1,8 @@
 import Foundation
 
 enum UpdateChecker {
-  static let appName = "CodexBar"
+  static let appName = AppIdentity.productName
+  static let legacyAppName = AppIdentity.legacyProductName
   static let releasesRepo = "rimusz/codex-bar"
 
   struct AppRelease: Sendable {
@@ -108,10 +109,12 @@ enum UpdateChecker {
     "\(appName)-\(tagName).app.zip"
   }
 
+  /// Prefers `CodexGateway-{tag}.app.zip`, then legacy `CodexBar-{tag}.app.zip`, then any `.app.zip`.
   static func selectDownloadAsset(from assets: [GitHubReleaseAsset], tagName: String) -> URL? {
-    let preferred = preferredAppZipAssetName(tagName: tagName)
-    if let match = assets.first(where: { $0.name == preferred }) {
-      return match.browserDownloadURL
+    for name in AppIdentity.appZipAssetNames(tagName: tagName) {
+      if let match = assets.first(where: { $0.name == name }) {
+        return match.browserDownloadURL
+      }
     }
     return assets.first(where: { $0.name.hasSuffix(".app.zip") })?.browserDownloadURL
   }
@@ -128,9 +131,9 @@ enum UpdateChecker {
     let (data, response) = try await URLSession.shared.data(for: request)
     guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
       throw NSError(
-        domain: "CodexBarUpdates",
+        domain: "CodexGatewayUpdates",
         code: 1,
-        userInfo: [NSLocalizedDescriptionKey: "Could not fetch CodexBar releases from GitHub."]
+        userInfo: [NSLocalizedDescriptionKey: "Could not fetch CodexGateway releases from GitHub."]
       )
     }
 
@@ -138,9 +141,9 @@ enum UpdateChecker {
     let summaries = releases.map(\.summary)
     guard let latest = latestNotarizedRelease(from: summaries) else {
       throw NSError(
-        domain: "CodexBarUpdates",
+        domain: "CodexGatewayUpdates",
         code: 3,
-        userInfo: [NSLocalizedDescriptionKey: "No notarized CodexBar release was found on GitHub."]
+        userInfo: [NSLocalizedDescriptionKey: "No notarized CodexGateway release was found on GitHub."]
       )
     }
     return latest

@@ -129,7 +129,7 @@ final class ModelCatalog {
 
   /// Slugs of custom models currently applied to Codex's exported picker catalog
   /// (`~/.codex/model-catalogs/custom-providers.json`). Native models (priority < 100)
-  /// are excluded so this reflects only CodexBar-managed entries.
+  /// are excluded so this reflects only CodexGateway-managed entries.
   func appliedCodexCustomSlugs() -> Set<String> {
     guard let data = try? Data(contentsOf: URL(fileURLWithPath: Paths.codexModelCatalog)),
           let file = try? JSONDecoder().decode(CodexCatalogFile.self, from: data) else {

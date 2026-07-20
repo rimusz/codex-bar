@@ -55,7 +55,7 @@ struct SettingsView: View {
     }
     .formStyle(.grouped)
     .frame(minWidth: 620, minHeight: 520)
-    .navigationTitle("CodexBar Settings")
+    .navigationTitle("CodexGateway Settings")
     .toolbar { toolbar }
     .onAppear { store.reload() }
     .safeAreaInset(edge: .bottom) { statusBar }
@@ -77,7 +77,7 @@ struct SettingsView: View {
       }
       Button("Cancel", role: .cancel) {}
     } message: {
-      Text("This removes the provider from ~/.codexbar/providers.json.")
+      Text("This removes the provider from ~/.codexgateway/providers.json.")
     }
     .confirmationDialog(
       "Delete model “\(modelPendingDeletion?.display_name ?? modelPendingDeletion?.slug ?? "")”?",
@@ -108,8 +108,8 @@ struct SettingsView: View {
       Button("Cancel", role: .cancel) {}
     } message: {
       Text(store.gatewayConfigInSync
-        ? "Removes CodexBar's managed settings from Codex's own config so Codex returns to its native configuration, then restarts Codex. Your CodexBar providers and models are not deleted."
-        : "Writes your current CodexBar providers and models into Codex's config, then restarts Codex.")
+        ? "Removes CodexGateway's managed settings from Codex's own config so Codex returns to its native configuration, then restarts Codex. Your CodexGateway providers and models are not deleted."
+        : "Writes your current CodexGateway providers and models into Codex's config, then restarts Codex.")
     }
   }
 
@@ -462,19 +462,19 @@ struct SettingsView: View {
         } label: {
           Label("Reset Gateway Config", systemImage: "exclamationmark.arrow.triangle.2.circlepath")
         }
-        .help("Reset only Codex's config so it stops routing through CodexBar. Your CodexBar providers and models are kept.")
+        .help("Reset only Codex's config so it stops routing through CodexGateway. Your CodexGateway providers and models are kept.")
       } else {
         Button {
           showingResetConfirmation = true
         } label: {
           Label("Update Gateway Config", systemImage: "arrow.triangle.2.circlepath")
         }
-        .help("Apply your CodexBar providers and models to Codex's config and restart Codex.")
+        .help("Apply your CodexGateway providers and models to Codex's config and restart Codex.")
       }
     } footer: {
       Text(store.gatewayConfigInSync
-        ? "Resets only Codex's configuration so it stops routing through CodexBar. Your CodexBar providers and models stay saved. Codex will restart."
-        : "Codex's config is out of date with your CodexBar models. Update writes your current providers and models into Codex's config. Codex will restart.")
+        ? "Resets only Codex's configuration so it stops routing through CodexGateway. Your CodexGateway providers and models stay saved. Codex will restart."
+        : "Codex's config is out of date with your CodexGateway models. Update writes your current providers and models into Codex's config. Codex will restart.")
     }
   }
 
@@ -714,7 +714,7 @@ struct SettingsView: View {
 
       Form {
         SecureField("API key", text: $presetAPIKey)
-        Text("Your key is stored locally in ~/.codexbar/providers.json.")
+        Text("Your key is stored locally in ~/.codexgateway/providers.json.")
           .font(.caption)
           .foregroundStyle(.secondary)
       }

@@ -1,6 +1,6 @@
 import XCTest
 import ServiceManagement
-@testable import CodexBar
+@testable import CodexGateway
 
 final class OpenAtLoginTests: XCTestCase {
   func testMenuCopy() {

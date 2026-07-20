@@ -16,7 +16,7 @@ enum UpdateUI {
       app = await fetchAppUpdateResult()
     } else {
       app = .failure(NSError(
-        domain: "CodexBarUpdates",
+        domain: "CodexGatewayUpdates",
         code: 4,
         userInfo: [NSLocalizedDescriptionKey: "No update check has run yet. Choose Check for Updates… to refresh."]
       ))

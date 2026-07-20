@@ -1,12 +1,12 @@
 import XCTest
-@testable import CodexBar
+@testable import CodexGateway
 
 final class UpdatePanelModelTests: XCTestCase {
   private func release(
     installed: String,
     latest: String,
     updateAvailable: Bool,
-    downloadURL: URL? = URL(string: "https://example.com/CodexBar-v1.0.0.app.zip")
+    downloadURL: URL? = URL(string: "https://example.com/CodexGateway-v1.0.0.app.zip")
   ) -> UpdateChecker.AppRelease {
     UpdateChecker.AppRelease(
       installedVersion: installed,

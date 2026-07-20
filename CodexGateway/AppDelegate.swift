@@ -3,7 +3,7 @@ import AppKit
 class AppDelegate: NSObject, NSApplicationDelegate {
   static weak var shared: AppDelegate?
   var statusBar: StatusBarController!
-  private let logFile = "/tmp/codexbar_debug.log"
+  private let logFile = "/tmp/codexgateway_debug.log"
   private var healthTimer: Timer?
 
   func log(_ message: String) {
@@ -16,6 +16,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     AppDelegate.shared = self
+
+    // If an older updater left us at CodexBar.app, migrate to CodexGateway.app and relaunch.
+    AppBundleMigration.migrateLegacyBundleIfNeeded()
 
     Paths.prepare()
     GatewayServer.shared.start()
@@ -32,7 +35,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     NotificationCenter.default.addObserver(
       self,
       selector: #selector(prepareForShutdown),
-      name: .codexBarPrepareForShutdown,
+      name: .codexGatewayPrepareForShutdown,
       object: nil
     )
 

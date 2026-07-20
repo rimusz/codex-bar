@@ -1,7 +1,7 @@
 import XCTest
 import AppKit
 import SwiftUI
-@testable import CodexBar
+@testable import CodexGateway
 
 @MainActor
 final class SettingsWindowControllerTests: XCTestCase {

@@ -2,7 +2,7 @@ import AppKit
 
 @MainActor
 enum UpdatePanel {
-  private static let appName = "CodexBar"
+  private static let appName = AppIdentity.productName
   fileprivate static let skipAppVersionTitle = "Skip This Version"
   private static var panel: NSPanel?
   private static var panelDelegate: PanelDelegate?
@@ -159,7 +159,7 @@ private final class UpdatePanelHost: NSObject {
     super.init()
 
     appPhaseObserver = NotificationCenter.default.addObserver(
-      forName: .codexBarUpdaterPhaseChanged,
+      forName: .codexGatewayUpdaterPhaseChanged,
       object: nil,
       queue: .main
     ) { [weak self] _ in
@@ -195,7 +195,7 @@ private final class UpdatePanelHost: NSObject {
     iconView.imageScaling = .scaleNone
     iconView.translatesAutoresizingMaskIntoConstraints = false
 
-    let nameLabel = centeredLabel("CodexBar", font: UpdatePanelStyle.appNameFont)
+    let nameLabel = centeredLabel(AppIdentity.productName, font: UpdatePanelStyle.appNameFont)
 
     let bodyLabel = NSTextField(wrappingLabelWithString: content.body)
     bodyLabel.font = UpdatePanelStyle.bodyFont
@@ -365,8 +365,8 @@ private final class UpdatePanelHost: NSObject {
 
   private func confirmAppInstall(version: String, onConfirm: @escaping () -> Void) {
     let alert = NSAlert()
-    alert.messageText = "Install CodexBar \(version)?"
-    alert.informativeText = "CodexBar will quit, replace itself with the new version, and reopen. Save any work first."
+    alert.messageText = "Install \(AppIdentity.productName) \(version)?"
+    alert.informativeText = "\(AppIdentity.productName) will quit, replace itself with the new version, and reopen. Save any work first."
     alert.alertStyle = .informational
     alert.addButton(withTitle: "Install and Restart")
     alert.addButton(withTitle: "Cancel")
@@ -438,22 +438,22 @@ private final class UpdatePanelHost: NSObject {
     case .downloading(let progress):
       showProgress = true
       progressValue = progress
-      progressText = "Downloading CodexBar… \(Int(progress * 100))%"
+      progressText = "Downloading \(AppIdentity.productName)… \(Int(progress * 100))%"
       appPrimaryButtonTitle = "Downloading…"
       appPrimaryButtonEnabled = false
     case .verifying:
       showProgress = true
-      progressText = "Verifying CodexBar download…"
+      progressText = "Verifying \(AppIdentity.productName) download…"
       progressValue = 0
       appPrimaryButtonTitle = "Verifying…"
       appPrimaryButtonEnabled = false
     case .readyToInstall(_, let version):
-      progressText = "Ready to install CodexBar \(version)."
+      progressText = "Ready to install \(AppIdentity.productName) \(version)."
       appPrimaryButtonTitle = "Install and Restart"
     case .installing:
       showProgress = true
       progressIndeterminate = true
-      progressText = "Installing CodexBar update…"
+      progressText = "Installing \(AppIdentity.productName) update…"
       appPrimaryButtonTitle = "Installing…"
       appPrimaryButtonEnabled = false
     case .failed(let message):
