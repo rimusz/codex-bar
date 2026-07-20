@@ -6,6 +6,8 @@ Codex Desktop normally talks only to OpenAI's own models. CodexGateway sits quie
 
 ![CodexGateway Settings and menu bar](docs/screenshots/settings-and-menu.png)
 
+> **Formerly CodexBar.** The app was renamed to **CodexGateway**. Existing installs keep your providers and keys — see [Upgrading from CodexBar](#upgrading-from-codexbar).
+
 > Providers must expose an OpenAI-compatible `/chat/completions` endpoint. (Cursor's API, for example, only lists models and has no public chat-completions endpoint, so it can't be used here.)
 
 ---
@@ -57,7 +59,9 @@ See [BUILDING.md](BUILDING.md) for packaging, code signing, notarization, and pu
 
 ## Upgrading from CodexBar
 
-CodexGateway is the new name for CodexBar. Existing installs upgrade smoothly:
+> **Name change:** **CodexBar** is now **CodexGateway** (menu bar title, `.app` bundle, and Settings window).
+
+Existing installs upgrade smoothly:
 
 - **Install the new app** from [Releases](https://github.com/rimusz/codex-bar/releases) or use **Check for Updates…** in the menu bar (in-app update works from notarized CodexBar builds too).
 - **Your settings are kept** — providers, models, and keys migrate from `~/.codexbar` to `~/.codexgateway` on first launch; no re-configuration needed.

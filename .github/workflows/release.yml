@@ -76,6 +76,20 @@ jobs:
           LEGACY_ZIP_NAME="${{ env.LEGACY_APP_NAME }}-${RELEASE_TAG}.app.zip"
           DMG_NAME="${{ env.APP_NAME }}-${RELEASE_TAG}-macOS.dmg"
           cat > release-body.txt <<EOF
+          ## Renamed: CodexBar → CodexGateway
+
+          This release ships as **CodexGateway** (was CodexBar).
+
+          - Settings and keys migrate automatically (\`~/.codexbar\` → \`~/.codexgateway\`).
+          - \`CodexBar.app\` is replaced by \`CodexGateway.app\` on update/first launch.
+          - Re-enable **Open at Login** once if you used it before (bundle ID changed).
+          - Prefer \`${ZIP_NAME}\`; \`${LEGACY_ZIP_NAME}\` is included so older CodexBar updaters still work.
+
+          ## Names
+
+          - App: \`CodexGateway.app\`
+          - Bundle ID: \`com.rimusz.CodexGateway\`
+
           ## Downloads
 
           - \`${ZIP_NAME}\` — Unsigned build (recommended)

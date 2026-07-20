@@ -62,6 +62,20 @@ write_release_notes() {
 
   if [ "$RELEASE_TYPE" = "notarized" ]; then
     cat > "$output_file" <<EOF
+## Renamed: CodexBar → CodexGateway
+
+This release ships as **CodexGateway** (was CodexBar).
+
+- Settings and keys migrate automatically (\`~/.codexbar\` → \`~/.codexgateway\`).
+- \`CodexBar.app\` is replaced by \`CodexGateway.app\` on update/first launch.
+- Re-enable **Open at Login** once if you used it before (bundle ID changed).
+- Prefer \`${zip_name}\`; \`${legacy_zip_name}\` is included so older CodexBar updaters still work.
+
+## Names
+
+- App: \`CodexGateway.app\`
+- Bundle ID: \`com.rimusz.CodexGateway\`
+
 ## Downloads
 
 - \`${zip_name}\` — Signed + notarized build (recommended)
@@ -72,6 +86,20 @@ This version is properly code-signed and notarized. No Gatekeeper warnings.
 EOF
   else
     cat > "$output_file" <<EOF
+## Renamed: CodexBar → CodexGateway
+
+This release ships as **CodexGateway** (was CodexBar).
+
+- Settings and keys migrate automatically (\`~/.codexbar\` → \`~/.codexgateway\`).
+- \`CodexBar.app\` is replaced by \`CodexGateway.app\` on update/first launch.
+- Re-enable **Open at Login** once if you used it before (bundle ID changed).
+- Prefer \`${zip_name}\`; \`${legacy_zip_name}\` is included so older CodexBar updaters still work.
+
+## Names
+
+- App: \`CodexGateway.app\`
+- Bundle ID: \`com.rimusz.CodexGateway\`
+
 ## Downloads
 
 - \`${zip_name}\` — Unsigned build (recommended)

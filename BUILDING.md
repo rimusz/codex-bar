@@ -111,6 +111,7 @@ Release title format (both paths):
 
 - `v{VERSION} (Notarized)` — signed + notarized; recommended for distribution
 - `v{VERSION} (Unsigned)` — development builds; Gatekeeper workarounds in release notes
+- Release notes lead with **Renamed: CodexBar → CodexGateway** (migration bullets + download list); see `scripts/release.sh` / `.github/workflows/release.yml`
 
 ### CI (unsigned)
 
