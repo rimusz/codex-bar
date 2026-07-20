@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Notarization helper for CodexBar (supports local + CI)
+# Notarization helper for CodexGateway (supports local + CI)
 # Usage (local):
 #   NOTARY_PROFILE=AC_PASSWORD ./scripts/notarize.sh
 #
 # Usage (CI with API key):
 #   APPLE_API_KEY_PATH=... APPLE_API_KEY_ID=... APPLE_API_ISSUER_ID=... \
-#   ./scripts/notarize.sh dist/CodexBar.app
+#   ./scripts/notarize.sh dist/CodexGateway.app
 
-TARGET="${1:-dist/CodexBar.app}"
+TARGET="${1:-dist/CodexGateway.app}"
 ZIP=""
 
 echo "==> Preparing $TARGET for notarization..."

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build CodexBar macOS menu bar app from the command line.
+# Build CodexGateway macOS menu bar app from the command line.
 # Uses Swift Package Manager (SPM) by default.
 #
 # Usage:
@@ -11,8 +11,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
-APP_NAME="CodexBar"
-EXECUTABLE_NAME="CodexBar"
+APP_NAME="CodexGateway"
+EXECUTABLE_NAME="CodexGateway"
 APP_VERSION="$(tr -d '[:space:]' < "$ROOT_DIR/VERSION")"
 
 BUILD_DIR="$ROOT_DIR/.build"
@@ -62,7 +62,7 @@ mkdir -p "$APP_BUNDLE/Contents/Resources"
 cp "$BUILD_DIR/release/$EXECUTABLE_NAME" "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE_NAME"
 chmod +x "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE_NAME"
 
-ICONSET_DIR="$ROOT_DIR/CodexBar/Resources/Assets.xcassets/MenuBarIcon.imageset"
+ICONSET_DIR="$ROOT_DIR/CodexGateway/Resources/Assets.xcassets/MenuBarIcon.imageset"
 
 copy_icon() {
     local src="$1"
@@ -122,10 +122,10 @@ elif [ -f "$ICONSET_DIR/MenuBarIcon@3x.png" ]; then
     generate_app_icon "$ICONSET_DIR/MenuBarIcon@3x.png"
 fi
 
-INSTALL_HELPER_SRC="$ROOT_DIR/scripts/codexbar-install-update.sh"
+INSTALL_HELPER_SRC="$ROOT_DIR/scripts/codexgateway-install-update.sh"
 if [ -f "$INSTALL_HELPER_SRC" ]; then
-    cp "$INSTALL_HELPER_SRC" "$APP_BUNDLE/Contents/Resources/codexbar-install-update"
-    chmod +x "$APP_BUNDLE/Contents/Resources/codexbar-install-update"
+    cp "$INSTALL_HELPER_SRC" "$APP_BUNDLE/Contents/Resources/codexgateway-install-update"
+    chmod +x "$APP_BUNDLE/Contents/Resources/codexgateway-install-update"
     echo "==> Bundled in-app update helper"
 fi
 
@@ -142,7 +142,7 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << EOF
     <key>CFBundleExecutable</key>
     <string>$EXECUTABLE_NAME</string>
     <key>CFBundleIdentifier</key>
-    <string>com.rimusz.CodexBar</string>
+    <string>com.rimusz.CodexGateway</string>
     <key>CFBundleName</key>
     <string>$APP_NAME</string>
     <key>CFBundlePackageType</key>

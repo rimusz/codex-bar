@@ -11,8 +11,8 @@ You are a read-only audit subagent.
 - Report severity, location, finding, and recommendation for each issue.
 - End with a brief domain summary.
 
-## CodexBar context
+## CodexGateway context
 
 - `ARCHITECTURE.md` is the canonical app map (source layout, gateway routes, config paths, common-tasks lookup) — start there.
-- Entry is `CodexBar/main.swift` + `AppDelegate`.
+- Entry is `CodexGateway/main.swift` + `AppDelegate`.
 - Call out any change that would need doc/test updates per `.cursor/rules/docs-and-tests.mdc`.

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Sign CodexBar.app for consistent ad-hoc or Developer ID signing.
-# Usage: codesign-app-bundle.sh /path/to/CodexBar.app [signing_identity]
+# Sign CodexGateway.app for consistent ad-hoc or Developer ID signing.
+# Usage: codesign-app-bundle.sh /path/to/CodexGateway.app [signing_identity]
 
 set -euo pipefail
 
 APP_BUNDLE="${1:?app bundle path required}"
 IDENTITY="${2:--}"
-BUNDLE_ID="com.rimusz.CodexBar"
+BUNDLE_ID="com.rimusz.CodexGateway"
 MACOS_DIR="$APP_BUNDLE/Contents/MacOS"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENTITLEMENTS="$ROOT_DIR/entitlements.plist"
@@ -21,7 +21,7 @@ sign_nested() {
     codesign --force --sign "$IDENTITY" --identifier "$BUNDLE_ID" --timestamp=none "$path"
 }
 
-sign_nested "CodexBar"
+sign_nested "CodexGateway"
 
 if [ "$IDENTITY" = "-" ]; then
     echo "==> Ad-hoc signing app bundle"

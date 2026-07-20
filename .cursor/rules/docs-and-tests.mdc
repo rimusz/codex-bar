@@ -10,7 +10,7 @@ Any **code change** — new features, behavior changes, bug fixes, refactors tha
 ## Tests
 
 1. Run `make test` before finishing.
-2. Add or extend tests in `Tests/CodexBarTests/` for behavior you changed or introduced.
+2. Add or extend tests in `Tests/CodexGatewayTests/` for behavior you changed or introduced.
 3. Prefer extending an existing test file over creating a new harness (see `ARCHITECTURE.md` → Tests).
 4. Test pure logic (translation, config stripping, catalog parsing) without requiring a live Codex Desktop process when possible.
 5. Skip new tests only when the change is docs-only or a trivial comment/format with zero behavior change.
@@ -25,7 +25,7 @@ For **gateway or menu bar changes**, `make test` is not always enough — also s
 
 ### Computer Use (test UI / Codex Desktop changes)
 
-Use **Computer Use** to verify anything that shows in the CodexBar Settings window, menu bar, or Codex Desktop itself (model picker, sign-in flow, config effects). Prefer it over asking the user for screenshots.
+Use **Computer Use** to verify anything that shows in the CodexGateway Settings window, menu bar, or Codex Desktop itself (model picker, sign-in flow, config effects). Prefer it over asking the user for screenshots.
 
 Tooling, in order of preference:
 
@@ -47,9 +47,9 @@ Practical notes for this repo:
 | New/changed gateway route, service, config path, notification | `ARCHITECTURE.md` (routes, source map, common tasks → files) |
 | User-visible capability or install/requirements | `README.md` |
 | Build, sign, notarize, release CI, scripts | `BUILDING.md` |
-| Gateway / Codex integration surface | `.cursor/skills/codexbar-gateway/SKILL.md`, `codex-gateway-integration.mdc` if needed |
-| Release/version/packaging behavior | `.cursor/skills/codexbar-release/SKILL.md` |
-| Dev workflow, make targets, testing | `.cursor/skills/codexbar-dev/SKILL.md` |
+| Gateway / Codex integration surface | `.cursor/skills/codexgateway-gateway/SKILL.md`, `codex-gateway-integration.mdc` if needed |
+| Release/version/packaging behavior | `.cursor/skills/codexgateway-release/SKILL.md` |
+| Dev workflow, make targets, testing | `.cursor/skills/codexgateway-dev/SKILL.md` |
 | Agent entry / repo conventions | `AGENTS.md` |
 
 `ARCHITECTURE.md` is the canonical internal reference — keep it accurate when structure or data flow changes.

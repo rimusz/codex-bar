@@ -1,6 +1,6 @@
 ---
 description: Gateway and Codex Desktop integration — HTTP server, translation, config
-globs: CodexBar/Services/{GatewayServer,LoopbackHTTPServer,Translator,ModelCatalog,CodexConfig,CodexAppServer,Paths}.swift
+globs: CodexGateway/Services/{GatewayServer,LoopbackHTTPServer,Translator,ModelCatalog,CodexConfig,CodexAppServer,Paths}.swift
 alwaysApply: false
 ---
 
@@ -11,8 +11,8 @@ alwaysApply: false
 - `GatewayServer` — HTTP routing on `127.0.0.1:8765`, third-party model proxy, OpenAI pass-through.
 - `LoopbackHTTPServer` — Network.framework HTTP server, SSE support.
 - `Translator` — Responses ↔ Chat Completions translation, namespace tool mapping, think-block stripping.
-- `ModelCatalog` — `~/.codexbar/custom_model_catalog.json` + `providers.json`.
-- `CodexConfig` — managed blocks in `~/.codex/config.toml` (markers `# >>> codexbar managed >>>`). `requires_openai_auth` on the `codexbar` provider is derived from `isSignedIn()` (auth.json): `false` when signed out so Codex skips login for local-only Ollama/custom use; `true` when signed in for native GPT/ChatGPT pass-through. Automatic callers (startup, auth watcher, restart) use `refreshManagedConfigIfApplied()` — they only re-patch when the block already exists, never injecting into a native Codex. Explicit apply is `patchCodexConfig()` via `SettingsStore.updateGatewayConfig` / add-model/provider actions.
+- `ModelCatalog` — `~/.codexgateway/custom_model_catalog.json` + `providers.json`.
+- `CodexConfig` — managed blocks in `~/.codex/config.toml` (markers `# >>> codexgateway managed >>>`). `requires_openai_auth` on the `codexgateway` provider is derived from `isSignedIn()` (auth.json): `false` when signed out so Codex skips login for local-only Ollama/custom use; `true` when signed in for native GPT/ChatGPT pass-through. Legacy `codexbar` blocks are rewritten to `codexgateway` on refresh/patch. Automatic callers (startup, auth watcher, restart) use `refreshManagedConfigIfApplied()` — they only re-patch when the block already exists, never injecting into a native Codex. Explicit apply is `patchCodexConfig()` via `SettingsStore.updateGatewayConfig` / add-model/provider actions.
 - `CodexAuthWatcher` — watches `~/.codex` for sign-in changes and re-patches config automatically; `restartCodexDesktop()` also re-patches before relaunch.
 - `CodexAppServer` — locate Codex binary, restart Codex Desktop.
 
@@ -23,7 +23,7 @@ alwaysApply: false
 
 ## After changing these services
 
-Run `make test` and update `ARCHITECTURE.md`, `README.md` (if user-visible), and this rule or `codexbar-gateway` skill when integration contracts change.
+Run `make test` and update `ARCHITECTURE.md`, `README.md` (if user-visible), and this rule or `codexgateway-gateway` skill when integration contracts change.
 
 ## Do not
 

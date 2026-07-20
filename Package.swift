@@ -2,26 +2,26 @@
 import PackageDescription
 
 let package = Package(
-    name: "CodexBar",
+    name: "CodexGateway",
     platforms: [.macOS("26.0")],
     products: [
         .executable(
-            name: "CodexBar",
-            targets: ["CodexBar"]
+            name: "CodexGateway",
+            targets: ["CodexGateway"]
         )
     ],
     dependencies: [],
     targets: [
         .executableTarget(
-            name: "CodexBar",
-            path: "CodexBar",
+            name: "CodexGateway",
+            path: "CodexGateway",
             resources: [
                 .process("Resources/Assets.xcassets")
             ]
         ),
         .testTarget(
-            name: "CodexBarTests",
-            dependencies: ["CodexBar"]
+            name: "CodexGatewayTests",
+            dependencies: ["CodexGateway"]
         )
     ]
 )

@@ -1,4 +1,4 @@
-# CodexBar - Makefile for easy local macOS builds
+# CodexGateway - Makefile for easy local macOS builds
 #
 # Uses SwiftPM (no Xcode project required).
 # See BUILDING.md for full packaging & signing instructions.
@@ -25,10 +25,10 @@ export SIGN_IDENTITY NOTARY_PROFILE RELEASE_TYPE
 #   make signed         # Codesigned build
 #   make notarize       # Notarize (NOTARY_PROFILE=...)
 #   make release        # Local only: build + publish GitHub release (gh auth); or push a v* tag for CI
-#   make open           # Restart + launch /Applications/CodexBar.app
+#   make open           # Restart + launch /Applications/CodexGateway.app
 
-APP_NAME       ?= CodexBar
-SCHEME         ?= CodexBar
+APP_NAME       ?= CodexGateway
+SCHEME         ?= CodexGateway
 CONFIGURATION  ?= Release
 
 DIST_DIR       ?= dist
@@ -41,7 +41,7 @@ NC     := \033[0m
 .PHONY: help build build-debug test run run-debug run-app app install dmg dmg-package signed clean open notarize release
 
 help: ## Show this help
-	@echo "CodexBar macOS Build Commands"
+	@echo "CodexGateway macOS Build Commands"
 	@echo ""
 	@echo "  $(YELLOW)make build$(NC)            Build release binary (SwiftPM)"
 	@echo "  $(YELLOW)make build-debug$(NC)      Build debug binary"
@@ -66,9 +66,9 @@ build-debug: ## Build using SwiftPM (Debug)
 	@swift build
 	@chmod +x .build/debug/$(APP_NAME) 2>/dev/null || true
 	@mkdir -p .build/debug
-	@cp -f CodexBar/Resources/Assets.xcassets/MenuBarIcon.imageset/MenuBarIcon.png .build/debug/ 2>/dev/null || true
-	@cp -f CodexBar/Resources/Assets.xcassets/MenuBarIcon.imageset/MenuBarIcon@2x.png .build/debug/ 2>/dev/null || true
-	@cp -f CodexBar/Resources/Assets.xcassets/MenuBarIcon.imageset/MenuBarIcon@3x.png .build/debug/ 2>/dev/null || true
+	@cp -f CodexGateway/Resources/Assets.xcassets/MenuBarIcon.imageset/MenuBarIcon.png .build/debug/ 2>/dev/null || true
+	@cp -f CodexGateway/Resources/Assets.xcassets/MenuBarIcon.imageset/MenuBarIcon@2x.png .build/debug/ 2>/dev/null || true
+	@cp -f CodexGateway/Resources/Assets.xcassets/MenuBarIcon.imageset/MenuBarIcon@3x.png .build/debug/ 2>/dev/null || true
 	@cp -f AppIcon.png .build/debug/ 2>/dev/null || true
 	@echo "$(GREEN)==> Debug build complete.$(NC)"
 
@@ -77,9 +77,9 @@ build: ## Build using SwiftPM (Release) - recommended
 	@swift build -c release
 	@chmod +x .build/release/$(APP_NAME) 2>/dev/null || true
 	@mkdir -p .build/release
-	@cp -f CodexBar/Resources/Assets.xcassets/MenuBarIcon.imageset/MenuBarIcon.png .build/release/ 2>/dev/null || true
-	@cp -f CodexBar/Resources/Assets.xcassets/MenuBarIcon.imageset/MenuBarIcon@2x.png .build/release/ 2>/dev/null || true
-	@cp -f CodexBar/Resources/Assets.xcassets/MenuBarIcon.imageset/MenuBarIcon@3x.png .build/release/ 2>/dev/null || true
+	@cp -f CodexGateway/Resources/Assets.xcassets/MenuBarIcon.imageset/MenuBarIcon.png .build/release/ 2>/dev/null || true
+	@cp -f CodexGateway/Resources/Assets.xcassets/MenuBarIcon.imageset/MenuBarIcon@2x.png .build/release/ 2>/dev/null || true
+	@cp -f CodexGateway/Resources/Assets.xcassets/MenuBarIcon.imageset/MenuBarIcon@3x.png .build/release/ 2>/dev/null || true
 	@cp -f AppIcon.png .build/release/ 2>/dev/null || true
 	@echo "$(GREEN)==> Build complete. Use 'make run' to launch.$(NC)"
 
@@ -99,6 +99,7 @@ run-app:
 	@BUILD_CONFIG=$(BUILD_CONFIG) ./scripts/build-dev-app.sh
 	@echo "$(GREEN)==> Starting $(APP_NAME)...$(NC)"
 	@pkill -x $(APP_NAME) 2>/dev/null || true
+	@pkill -x CodexBar 2>/dev/null || true
 	@sleep 0.2
 	@open "$(BUILD_DIR)/$(APP_NAME).app"
 	@echo "$(GREEN)==> $(APP_NAME) launched from .build/$(APP_NAME).app$(NC)"
@@ -133,7 +134,7 @@ clean: ## Remove all build products and dist
 	@rm -rf $(DIST_DIR)
 	@echo "$(GREEN)==> Clean complete.$(NC)"
 
-open: ## Restart + launch /Applications/CodexBar.app
+open: ## Restart + launch /Applications/CodexGateway.app
 	@if [ ! -d "/Applications/$(APP_NAME).app" ]; then \
 		echo "No app found at /Applications/$(APP_NAME).app. Run 'make install' first."; \
 		exit 1; \
@@ -155,7 +156,7 @@ install: signed ## Copy .app to /Applications/ (codesigns when SIGN_IDENTITY is 
 		exit 1; \
 	fi
 	@echo "$(GREEN)==> Installing to /Applications/$(APP_NAME).app...$(NC)"
-	@rm -rf "/Applications/$(APP_NAME).app"
+	@rm -rf "/Applications/$(APP_NAME).app" "/Applications/CodexBar.app"
 	@cp -R "dist/$(APP_NAME).app" /Applications/
 	@if [ -z "$(SIGN_IDENTITY)" ]; then xattr -cr "/Applications/$(APP_NAME).app"; fi
 	@if [ ! -f "/Applications/$(APP_NAME).app/Contents/MacOS/$(APP_NAME)" ]; then \
