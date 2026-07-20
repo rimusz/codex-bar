@@ -46,7 +46,7 @@ CodexGateway is a **menu-bar macOS app** (AppKit) that runs an embedded **gatewa
 | Release asset | legacy `CodexBar-{tag}.app.zip` for older updaters |
 | App folder | `CodexBar.app` → `CodexGateway.app` via `AppBundleMigration` (rename helper) after an old updater installs into `CodexBar.app`, or immediately when a new-build updater installs |
 
-Releases publish **`CodexGateway-{tag}.app.zip`** plus a legacy **`CodexBar-{tag}.app.zip`** so older updaters still work. Dual zip alone does **not** rename the Finder folder — that happens on first launch of the new binary still living in `CodexBar.app` (`AppBundleMigration` → helper `--rename-from` / `--rename-to`).
+Releases publish **`CodexGateway-{tag}.app.zip`** plus a legacy **`CodexBar-{tag}.app.zip`** so older updaters still work. Dual zip alone does **not** rename the Finder folder — that happens on first launch of the new binary still living in `CodexBar.app` (`AppBundleMigration` → helper `--rename-from` / `--rename-to`). The install helper is resolved via `Contents/Resources/…` path (not only `Bundle.url(forResource:)`, which can miss extensionless scripts).
 
 ---
 

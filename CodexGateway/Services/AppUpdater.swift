@@ -279,9 +279,20 @@ final class AppUpdater {
     return nil
   }
 
-  static func installHelperURL() -> URL? {
+  nonisolated static func installHelperURL(bundle: Bundle = .main) -> URL? {
     for name in [AppIdentity.installHelperResourceName, AppIdentity.legacyInstallHelperResourceName] {
-      if let resource = Bundle.main.url(forResource: name, withExtension: nil) {
+      // Prefer explicit Resources path — `url(forResource:withExtension: nil)` is unreliable
+      // for extensionless helper scripts inside .app bundles.
+      if let resources = bundle.resourceURL {
+        let candidate = resources.appendingPathComponent(name)
+        if FileManager.default.isReadableFile(atPath: candidate.path) {
+          return candidate
+        }
+      }
+      if let resource = bundle.url(forResource: name, withExtension: nil) {
+        return resource
+      }
+      if let resource = bundle.url(forResource: name, withExtension: "") {
         return resource
       }
     }
@@ -308,14 +319,21 @@ final class AppUpdater {
       .appendingPathComponent("Updates", isDirectory: true)
   }
 
-  static func isInstallTargetWritable(_ targetURL: URL) -> Bool {
+  nonisolated static func isInstallTargetWritable(_ targetURL: URL) -> Bool {
     if let values = try? targetURL.resourceValues(forKeys: [.volumeIsReadOnlyKey]),
        values.volumeIsReadOnly == true {
       return false
     }
 
     let parent = targetURL.deletingLastPathComponent()
-    return FileManager.default.isWritableFile(atPath: parent.path)
+    let fm = FileManager.default
+    // /Applications is often reported non-writable even when the user can replace their .app.
+    // Accept parent-writable OR an existing bundle the user can delete/replace.
+    if fm.isWritableFile(atPath: parent.path) { return true }
+    if fm.fileExists(atPath: targetURL.path), fm.isDeletableFile(atPath: targetURL.path) {
+      return true
+    }
+    return false
   }
 
   private static func cleanupOldDownloads(in directory: URL, keepingVersion: String) throws {

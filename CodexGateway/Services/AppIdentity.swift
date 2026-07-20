@@ -76,19 +76,22 @@ enum AppBundleMigration {
     let target = AppIdentity.installTargetURL(from: current)
     guard current.path != target.path else { return false }
 
-    guard AppUpdater.isInstallTargetWritable(current) else {
+    // Check writability of the destination parent / replaceability of the source bundle.
+    guard AppUpdater.isInstallTargetWritable(target) || AppUpdater.isInstallTargetWritable(current) else {
       GatewayLog.error(
-        "Legacy bundle migration skipped: not writable at \(current.path)"
+        "Legacy bundle migration skipped: not writable at \(current.path) → \(target.path)"
       )
       return false
     }
     guard let helper = AppUpdater.installHelperURL() else {
-      GatewayLog.error("Legacy bundle migration skipped: install helper missing")
+      GatewayLog.error(
+        "Legacy bundle migration skipped: install helper missing under \(Bundle.main.resourceURL?.path ?? "?")"
+      )
       return false
     }
 
     GatewayLog.info(
-      "Migrating app bundle \(current.lastPathComponent) → \(target.lastPathComponent)"
+      "Migrating app bundle \(current.path) → \(target.path) via \(helper.lastPathComponent)"
     )
 
     let process = Process()

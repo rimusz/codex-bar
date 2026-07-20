@@ -53,4 +53,37 @@ final class AppIdentityTests: XCTestCase {
       bundleName: "CodexGateway"
     ))
   }
+
+  func testInstallHelperURLFindsExtensionlessResourceInBundle() throws {
+    let root = FileManager.default.temporaryDirectory
+      .appendingPathComponent("CodexGatewayHelperLookup-\(UUID().uuidString).app", isDirectory: true)
+    let contents = root.appendingPathComponent("Contents", isDirectory: true)
+    let resources = contents.appendingPathComponent("Resources", isDirectory: true)
+    let macos = contents.appendingPathComponent("MacOS", isDirectory: true)
+    try FileManager.default.createDirectory(at: resources, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: macos, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let plist = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+    <plist version="1.0"><dict>
+      <key>CFBundleIdentifier</key><string>com.rimusz.CodexGateway.test</string>
+      <key>CFBundleName</key><string>CodexGateway</string>
+      <key>CFBundleExecutable</key><string>CodexGateway</string>
+      <key>CFBundlePackageType</key><string>APPL</string>
+    </dict></plist>
+    """
+    try plist.write(to: contents.appendingPathComponent("Info.plist"), atomically: true, encoding: .utf8)
+    try Data().write(to: macos.appendingPathComponent("CodexGateway"))
+    let helper = resources.appendingPathComponent("codexgateway-install-update")
+    try "#!/bin/bash\necho ok\n".write(to: helper, atomically: true, encoding: .utf8)
+
+    guard let bundle = Bundle(url: root) else {
+      XCTFail("Failed to load test bundle at \(root.path)")
+      return
+    }
+    let found = AppUpdater.installHelperURL(bundle: bundle)
+    XCTAssertEqual(found?.path, helper.path)
+  }
 }

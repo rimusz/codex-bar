@@ -17,14 +17,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   func applicationDidFinishLaunching(_ notification: Notification) {
     AppDelegate.shared = self
 
+    // Ensure the log file exists before migration diagnostics write to it.
+    if !FileManager.default.fileExists(atPath: logFile) {
+      FileManager.default.createFile(atPath: logFile, contents: nil)
+    }
+
     // If an older updater left us at CodexBar.app, migrate to CodexGateway.app and relaunch.
     // Skip the rest of startup — the helper quits this process and opens the renamed app.
     if AppBundleMigration.migrateLegacyBundleIfNeeded() {
       log("[App] Migrating CodexBar.app → CodexGateway.app; quitting to relaunch")
       return
     }
-
-    try? "".write(toFile: logFile, atomically: true, encoding: .utf8)
 
     Paths.prepare()
     GatewayServer.shared.start()
