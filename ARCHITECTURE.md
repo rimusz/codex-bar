@@ -47,7 +47,7 @@ codex-bar/
 │   │   ├── LoopbackHTTPServer.swift
 │   │   ├── Translator.swift      # Responses ↔ Chat translation
 │   │   ├── ModelCatalog.swift    # custom_model_catalog.json + providers
-│   │   ├── ProviderModelFetcher.swift # OpenAI-compatible /models discovery
+│   │   ├── ProviderModelFetcher.swift # OpenAI /models + Cline Pass recommended-models
 │   │   ├── FetchedModelsStore.swift   # ~/.codexbar/fetched_models.json cache
 │   │   ├── ZstdBridge.swift         # zstd decompress for Codex request bodies
 │   │   ├── UpdateChecker.swift    # GitHub release version check
@@ -132,7 +132,7 @@ Install helper: `scripts/codexbar-install-update.sh` → bundled as `Contents/Re
 | `~/.codexbar/custom_model_catalog.json` | CodexBar internal model catalog (routing metadata). Raw model ids get friendly display names via `ModelCatalog.prettyDisplayName` / `normalizeDisplayNames` (run on Settings reload + gateway startup; drops `vendor/model` prefixes, collapses doubled vendors, title-cases, and prefixes the provider brand Cline-style via `providerBrand`, e.g. "xAI Grok 4.3"); user-edited names are preserved. |
 | `~/.codex/model-catalogs/custom-providers.json` | Codex-compatible picker export (`model_catalog_json`): native ChatGPT/Codex models plus custom entries. **Codex only renders custom entries in its picker when signed in** (free account is enough); signed out it shows a built-in fallback list and labels any active custom model as "Custom". Settings surfaces a sign-in hint (`SettingsStore.customModelsNeedSignIn`) when custom models exist but `auth.json` is absent. |
 | `~/.codexbar/providers.json` | Provider endpoints + credentials. Read **live** by the gateway per request (`ModelCatalog.resolveUpstream`), so provider/preset changes take effect immediately — **no Codex restart** (only model changes require one; see `SettingsStore.requiresCodexRestart`). |
-| `~/.codexbar/fetched_models.json` | Cached `/models` lists per provider (updated on each fetch) |
+| `~/.codexbar/fetched_models.json` | Cached model lists per provider (OpenAI `/models`, or Cline Pass recommended-models feed); replaced on each fetch |
 | `~/.codex/config.toml` | Codex config (managed blocks patched). `[model_providers.codexbar].requires_openai_auth` is set from sign-in state: `false` when not signed in (skips Codex login — enables local-only Ollama/custom use), `true` when signed in (native GPT/ChatGPT pass-through). Automatic callers (startup, `CodexAuthWatcher`, restart) only **refresh** the block when it is already present (`refreshManagedConfigIfApplied`) — CodexBar never silently injects into a fresh/native Codex; Settings' **Update Gateway Config** is the explicit opt-in. |
 | `~/.codex/auth.json` | Auth token for pass-through; also read by `CodexConfig.isSignedIn()` to decide `requires_openai_auth`; watched by `CodexAuthWatcher` |
 
@@ -167,7 +167,7 @@ CI: `.github/workflows/pr.yml` (PR: `make test` + `make app`), `.github/workflow
 | Add gateway route | `GatewayServer.swift` |
 | Change translation logic | `Translator.swift` |
 | Model catalog / providers | `ModelCatalog.swift`, `ProviderPresets.swift`, `ProviderModelFetcher.swift`, `Paths.swift` |
-| Install provider preset | `PresetInstaller`, Settings window (provider only; models fetched/added separately) |
+| Install provider preset | `PresetInstaller`, Settings window (provider only; models fetched/added separately). Cline Pass listing: `ProviderModelFetcher.fetchClinePassRecommended` → `https://api.cline.bot/api/v1/ai/cline/recommended-models` (no API key) |
 | Open Settings | `SettingsWindowController`, menu **Settings** (⌘,) |
 | Patch Codex config | `CodexConfig.swift` |
 | Reset/Update gateway config | `SettingsView` (label toggles on `SettingsStore.gatewayConfigInSync`), `SettingsStore.resetGatewayConfig` / `updateGatewayConfig`, `CodexConfig.resetToNative` (Codex-side only; keeps `~/.codexbar` data) |

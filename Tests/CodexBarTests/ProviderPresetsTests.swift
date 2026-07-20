@@ -10,12 +10,37 @@ final class ProviderPresetsTests: XCTestCase {
         XCTAssertEqual(preset.suggestedModel, "glm-5.2")
     }
 
-    func testClinePassInstallsAllCatalogModels() {
-        let models = ProviderPreset.clinePass.catalogModels()
-        XCTAssertEqual(models.count, ClinePassCatalog.models.count)
+    func testClinePassUsesLiveCatalogRefresh() {
+        let preset = ProviderPreset.clinePass
+        XCTAssertEqual(preset.providerID, "clinepass")
+        XCTAssertEqual(preset.baseURL, "https://api.cline.bot/api/v1")
+        XCTAssertEqual(preset.suggestedModel, "cline-pass/glm-5.2")
+        XCTAssertFalse(preset.supportsModelListingFetch)
+        XCTAssertTrue(preset.supportsLiveCatalogRefresh)
+        XCTAssertTrue(preset.canFetchModels)
+        XCTAssertFalse(preset.usesCatalogModels)
+        XCTAssertEqual(
+            preset.catalogDocumentationURL?.absoluteString,
+            ClinePassCatalog.documentationURL.absoluteString
+        )
+        XCTAssertEqual(
+            ClinePassCatalog.recommendedModelsURL.absoluteString,
+            "https://api.cline.bot/api/v1/ai/cline/recommended-models"
+        )
+
+        let models = preset.catalogModels()
+        XCTAssertEqual(models.count, 1)
         XCTAssertEqual(models.first?.provider, "clinepass")
         XCTAssertEqual(models.first?.model, "cline-pass/glm-5.2")
-        XCTAssertEqual(models.first?.display_name, "Cline GLM-5.2")
+        XCTAssertEqual(models.first?.display_name, "Cline GLM 5.2")
+    }
+
+    func testClinePassDisplayHelpers() {
+        XCTAssertEqual(ClinePassCatalog.displayName(for: "Kimi K2.7 Code"), "Cline Kimi K2.7 Code")
+        XCTAssertEqual(ClinePassCatalog.displayName(for: "Cline GLM-5.2"), "Cline GLM-5.2")
+        XCTAssertEqual(ClinePassCatalog.displayLabel(for: "cline-pass/kimi-k3"), "Kimi K3")
+        XCTAssertEqual(ClinePassCatalog.displayLabel(for: "cline-pass/glm-5.2"), "GLM 5.2")
+        XCTAssertEqual(ClinePassCatalog.displayLabel(for: "cline-pass/kimi-k2.7-code"), "Kimi K2.7 Code")
     }
 
     func testXaiPresetDefinition() {
