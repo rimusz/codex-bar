@@ -22,6 +22,8 @@ sign_nested() {
 }
 
 sign_nested "CodexGateway"
+# Legacy launch path left behind by old ditto-merge updaters.
+sign_nested "CodexBar"
 
 if [ "$IDENTITY" = "-" ]; then
     echo "==> Ad-hoc signing app bundle"

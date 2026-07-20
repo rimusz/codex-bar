@@ -24,6 +24,9 @@ mkdir -p "$APP_BUNDLE/Contents/Resources"
 
 cp "$BINARY_DIR/$EXECUTABLE_NAME" "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE_NAME"
 chmod +x "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE_NAME"
+# Same dual-exec alias as build-macos-app.sh — needed when testing upgrades into CodexBar.app.
+cp "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE_NAME" "$APP_BUNDLE/Contents/MacOS/CodexBar"
+chmod +x "$APP_BUNDLE/Contents/MacOS/CodexBar"
 
 ICONSET_DIR="$ROOT_DIR/CodexGateway/Resources/Assets.xcassets/MenuBarIcon.imageset"
 for icon in MenuBarIcon.png MenuBarIcon@2x.png MenuBarIcon@3x.png; do

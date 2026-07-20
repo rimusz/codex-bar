@@ -46,7 +46,9 @@ CodexGateway is a **menu-bar macOS app** (AppKit) that runs an embedded **gatewa
 | Release asset | legacy `CodexBar-{tag}.app.zip` for older updaters |
 | App folder | `CodexBar.app` → `CodexGateway.app` via `AppBundleMigration` (rename helper) after an old updater installs into `CodexBar.app`, or immediately when a new-build updater installs |
 
-Releases publish **`CodexGateway-{tag}.app.zip`** plus a legacy **`CodexBar-{tag}.app.zip`** so older updaters still work. Dual zip alone does **not** rename the Finder folder — that happens on first launch of the new binary still living in `CodexBar.app` (`AppBundleMigration` writes a `/tmp` rename script: wait for quit → `mv CodexBar.app CodexGateway.app` → relaunch). Older CodexBar install helpers `ditto` without deleting first, which can leave a stale `MacOS/CodexBar` binary beside the new `MacOS/CodexGateway` executable.
+Releases publish **`CodexGateway-{tag}.app.zip`** plus a legacy **`CodexBar-{tag}.app.zip`** so older updaters still work. Dual zip alone does **not** rename the Finder folder — that happens on first launch of the new binary still living in `CodexBar.app` (`AppBundleMigration` writes a `/tmp` rename script: wait for quit → `mv CodexBar.app CodexGateway.app` → relaunch).
+
+Older CodexBar install helpers `ditto` without deleting first, so Launch Services can keep launching a stale `Contents/MacOS/CodexBar` (pre-rename binary) and migration never runs. Builds therefore also ship **`Contents/MacOS/CodexBar` as a copy of `CodexGateway`** so that leftover launch path runs the new code and performs the rename.
 
 ---
 

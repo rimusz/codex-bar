@@ -61,6 +61,7 @@ GitHub release assets use versioned names, e.g. `CodexGateway-v1.0.0.app.zip`, l
 | Install helper | legacy `codexbar-install-update` |
 | Release asset | legacy `CodexBar-{tag}.app.zip` for older updaters |
 | App folder | `CodexBar.app` → `CodexGateway.app` on first launch after an old-updater install (`AppBundleMigration`), or during install when updating from a post-rename build |
+| Legacy exec alias | `Contents/MacOS/CodexBar` is a copy of `CodexGateway` so old ditto-merge upgrades still launch new code |
 
 ## Scripts
 

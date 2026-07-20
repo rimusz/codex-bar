@@ -61,6 +61,12 @@ mkdir -p "$APP_BUNDLE/Contents/Resources"
 
 cp "$BUILD_DIR/release/$EXECUTABLE_NAME" "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE_NAME"
 chmod +x "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE_NAME"
+# Older CodexBar updaters `ditto` without deleting first, so Launch Services can keep
+# launching a stale Contents/MacOS/CodexBar. Ship the new binary under that name too
+# so the leftover path runs migration (CodexBar.app → CodexGateway.app).
+cp "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE_NAME" "$APP_BUNDLE/Contents/MacOS/CodexBar"
+chmod +x "$APP_BUNDLE/Contents/MacOS/CodexBar"
+echo "==> Bundled legacy MacOS/CodexBar executable alias for upgrade launches"
 
 ICONSET_DIR="$ROOT_DIR/CodexGateway/Resources/Assets.xcassets/MenuBarIcon.imageset"
 
