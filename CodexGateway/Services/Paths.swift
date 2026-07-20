@@ -39,6 +39,8 @@ enum Paths {
   /// - If only the legacy dir exists: rename it.
   /// - If both exist: copy any missing known files into the new dir, then remove legacy.
   /// - If only the new dir exists: no-op.
+  /// - If rename fails and nothing could be copied into a pre-existing current dir,
+  ///   leave the legacy dir in place (do not delete the only copy of user config).
   @discardableResult
   static func migrateLegacyConfigDirectory(
     legacyDir: String = Paths.legacyConfigDir,
@@ -84,6 +86,15 @@ enum Paths {
       } catch {
         GatewayLog.error("Failed to copy \(name) during config migration: \(error.localizedDescription)")
       }
+    }
+
+    // Never delete the only copy of user config: if the current dir did not already
+    // exist and no known files were copied, leave `~/.codexbar` in place.
+    guard currentExists || copiedAny else {
+      GatewayLog.error(
+        "Leaving legacy config at \(legacyDir); could not migrate into \(currentDir)"
+      )
+      return false
     }
 
     do {

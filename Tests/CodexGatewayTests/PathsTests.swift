@@ -116,4 +116,27 @@ final class PathsTests: XCTestCase {
       currentDir: current.path
     ))
   }
+
+  /// When rename fails and no files can be copied, keep the legacy dir (avoid data loss).
+  func testMigrateKeepsLegacyWhenCurrentPathBlockedAndNothingCopied() throws {
+    let legacy = tempRoot.appendingPathComponent(".codexbar")
+    let current = tempRoot.appendingPathComponent(".codexgateway")
+    try FileManager.default.createDirectory(at: legacy, withIntermediateDirectories: true)
+    try Data(#"{"providers":[{"name":"xai"}]}"#.utf8)
+      .write(to: legacy.appendingPathComponent("providers.json"))
+    // A file at the destination path blocks both rename and createDirectory.
+    try Data("blocker".utf8).write(to: current)
+
+    XCTAssertFalse(Paths.migrateLegacyConfigDirectory(
+      legacyDir: legacy.path,
+      currentDir: current.path
+    ))
+
+    XCTAssertTrue(FileManager.default.fileExists(atPath: legacy.path))
+    let providers = try String(
+      contentsOf: legacy.appendingPathComponent("providers.json"),
+      encoding: .utf8
+    )
+    XCTAssertTrue(providers.contains("xai"))
+  }
 }

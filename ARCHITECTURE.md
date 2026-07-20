@@ -39,7 +39,7 @@ CodexGateway is a **menu-bar macOS app** (AppKit) that runs an embedded **gatewa
 | Item | Legacy |
 |------|--------|
 | Bundle ID | `com.rimusz.CodexBar` — macOS Login Items may need re-enable after upgrade |
-| Config dir | `~/.codexbar` → migrated to `~/.codexgateway` on launch (`Paths.migrateLegacyConfigDirectory`) |
+| Config dir | `~/.codexbar` → migrated to `~/.codexgateway` on launch (`Paths.migrateLegacyConfigDirectory`); legacy dir is removed only after a successful rename/merge so a failed migrate cannot wipe config |
 | Codex provider | `codexbar` / `[model_providers.codexbar]` → rewritten to `codexgateway` on refresh/patch |
 | Managed markers | `# >>> codexbar managed >>>` → rewritten on refresh/patch |
 | Install helper | legacy `codexbar-install-update` |
