@@ -49,40 +49,77 @@ enum AppIdentity {
 }
 
 /// One-shot migration when a post-rename binary is still running from `CodexBar.app`.
+///
+/// Older CodexBar updaters install into `/Applications/CodexBar.app`. After that update
+/// lands the CodexGateway binary, this renames the folder to `CodexGateway.app` and relaunches.
 enum AppBundleMigration {
+  /// Pure decision helper (testable): true when the running bundle folder is still
+  /// `CodexBar.app` but Info.plist already identifies as CodexGateway.
+  static func shouldMigrateLegacyBundle(
+    bundleURL: URL,
+    bundleName: String?
+  ) -> Bool {
+    bundleURL.lastPathComponent == AppIdentity.legacyAppBundleName
+      && bundleName == AppIdentity.productName
+  }
+
+  /// - Returns: `true` when a rename helper was launched (caller should stop normal startup).
   @MainActor
-  static func migrateLegacyBundleIfNeeded() {
+  @discardableResult
+  static func migrateLegacyBundleIfNeeded() -> Bool {
     let current = Bundle.main.bundleURL
-    guard current.lastPathComponent == AppIdentity.legacyAppBundleName else { return }
-    guard (Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String)
-            == AppIdentity.productName else { return }
+    let bundleName = Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String
+    guard shouldMigrateLegacyBundle(bundleURL: current, bundleName: bundleName) else {
+      return false
+    }
 
     let target = AppIdentity.installTargetURL(from: current)
-    guard current.path != target.path else { return }
-    guard AppUpdater.isInstallTargetWritable(current) else { return }
-    guard let helper = AppUpdater.installHelperURL() else { return }
+    guard current.path != target.path else { return false }
+
+    guard AppUpdater.isInstallTargetWritable(current) else {
+      GatewayLog.error(
+        "Legacy bundle migration skipped: not writable at \(current.path)"
+      )
+      return false
+    }
+    guard let helper = AppUpdater.installHelperURL() else {
+      GatewayLog.error("Legacy bundle migration skipped: install helper missing")
+      return false
+    }
+
+    GatewayLog.info(
+      "Migrating app bundle \(current.lastPathComponent) → \(target.lastPathComponent)"
+    )
 
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/bin/bash")
     process.arguments = [
       helper.path,
-      "--target", target.path,
-      "--new-app", current.path,
-      "--remove-legacy", current.path,
+      "--rename-from", current.path,
+      "--rename-to", target.path,
       "--pid", String(getpid()),
     ]
-    process.standardOutput = FileHandle.nullDevice
-    process.standardError = FileHandle.nullDevice
+    // Keep helper output for diagnosis if rename fails.
+    let logURL = URL(fileURLWithPath: "/tmp/codexgateway_migrate.log")
+    FileManager.default.createFile(atPath: logURL.path, contents: nil)
+    if let handle = try? FileHandle(forWritingTo: logURL) {
+      process.standardOutput = handle
+      process.standardError = handle
+    } else {
+      process.standardOutput = FileHandle.nullDevice
+      process.standardError = FileHandle.nullDevice
+    }
 
     do {
       try process.run()
     } catch {
       GatewayLog.error("Legacy bundle migration failed to launch helper: \(error.localizedDescription)")
-      return
+      return false
     }
 
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
       NSApp.terminate(nil)
     }
+    return true
   }
 }

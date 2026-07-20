@@ -18,14 +18,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     AppDelegate.shared = self
 
     // If an older updater left us at CodexBar.app, migrate to CodexGateway.app and relaunch.
-    AppBundleMigration.migrateLegacyBundleIfNeeded()
+    // Skip the rest of startup — the helper quits this process and opens the renamed app.
+    if AppBundleMigration.migrateLegacyBundleIfNeeded() {
+      log("[App] Migrating CodexBar.app → CodexGateway.app; quitting to relaunch")
+      return
+    }
+
+    try? "".write(toFile: logFile, atomically: true, encoding: .utf8)
 
     Paths.prepare()
     GatewayServer.shared.start()
     CodexAuthWatcher.shared.start()
     log("[App] Started embedded Swift gateway on :8765")
-
-    try? "".write(toFile: logFile, atomically: true, encoding: .utf8)
     if let appIcon = AppIconProvider.image() {
       NSApplication.shared.applicationIconImage = appIcon
     }

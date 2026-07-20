@@ -44,9 +44,9 @@ CodexGateway is a **menu-bar macOS app** (AppKit) that runs an embedded **gatewa
 | Managed markers | `# >>> codexbar managed >>>` → rewritten on refresh/patch |
 | Install helper | legacy `codexbar-install-update` |
 | Release asset | legacy `CodexBar-{tag}.app.zip` for older updaters |
-| App folder | `CodexBar.app` → `CodexGateway.app` on launch or in-app update |
+| App folder | `CodexBar.app` → `CodexGateway.app` via `AppBundleMigration` (rename helper) after an old updater installs into `CodexBar.app`, or immediately when a new-build updater installs |
 
-Releases publish **`CodexGateway-{tag}.app.zip`** plus a legacy **`CodexBar-{tag}.app.zip`** so older updaters still work.
+Releases publish **`CodexGateway-{tag}.app.zip`** plus a legacy **`CodexBar-{tag}.app.zip`** so older updaters still work. Dual zip alone does **not** rename the Finder folder — that happens on first launch of the new binary still living in `CodexBar.app` (`AppBundleMigration` → helper `--rename-from` / `--rename-to`).
 
 ---
 
@@ -209,7 +209,7 @@ Release assets: `CodexGateway-{tag}.app.zip`, legacy `CodexBar-{tag}.app.zip`, `
 | Open at Login | `OpenAtLogin.swift` (`SMAppService.mainApp`), menu item in `StatusBarController` |
 | Gateway status/port in menu | `StatusBarController` (disabled item), `StatusBarMenuCopy.gatewayStatusTitle`, address from `Paths.gatewayHost`/`gatewayPort` |
 | In-app updates | `UpdateChecker.swift`, `AppUpdater.swift`, `UpdateScheduler.swift`, `UpdatePanel.swift` |
-| App rename / migration | `AppIdentity.swift`, `AppUpdater.swift`, `scripts/codexgateway-install-update.sh` |
+| App rename / migration | `AppIdentity.swift` (`AppBundleMigration`), `AppUpdater.swift`, `scripts/codexgateway-install-update.sh` (`--rename-from` / `--rename-to`) |
 | Version display | `AppVersion.swift` (bundle Info.plist first, then `VERSION` file) |
 | Packaging / signing | `scripts/build-macos-app.sh`, `BUILDING.md` |
 

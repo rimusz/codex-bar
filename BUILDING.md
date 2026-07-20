@@ -60,7 +60,7 @@ GitHub release assets use versioned names, e.g. `CodexGateway-v1.0.0.app.zip`, l
 | Config dir | `~/.codexbar` → auto-migrated to `~/.codexgateway` |
 | Install helper | legacy `codexbar-install-update` |
 | Release asset | legacy `CodexBar-{tag}.app.zip` for older updaters |
-| App folder | `CodexBar.app` → `CodexGateway.app` on install or in-app update |
+| App folder | `CodexBar.app` → `CodexGateway.app` on first launch after an old-updater install (`AppBundleMigration`), or during install when updating from a post-rename build |
 
 ## Scripts
 

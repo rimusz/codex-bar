@@ -36,4 +36,21 @@ final class AppIdentityTests: XCTestCase {
     XCTAssertEqual(target.path, current.path)
     XCTAssertNil(AppIdentity.legacyBundleToRemove(currentBundleURL: current, targetURL: target))
   }
+
+  func testShouldMigrateLegacyBundleOnlyWhenFolderIsCodexBarAndNameIsCodexGateway() {
+    let legacy = URL(fileURLWithPath: "/Applications/CodexBar.app")
+    let modern = URL(fileURLWithPath: "/Applications/CodexGateway.app")
+    XCTAssertTrue(AppBundleMigration.shouldMigrateLegacyBundle(
+      bundleURL: legacy,
+      bundleName: "CodexGateway"
+    ))
+    XCTAssertFalse(AppBundleMigration.shouldMigrateLegacyBundle(
+      bundleURL: legacy,
+      bundleName: "CodexBar"
+    ))
+    XCTAssertFalse(AppBundleMigration.shouldMigrateLegacyBundle(
+      bundleURL: modern,
+      bundleName: "CodexGateway"
+    ))
+  }
 }
