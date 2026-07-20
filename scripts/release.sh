@@ -106,24 +106,34 @@ ensure_release_tag() {
     echo "==> Creating tag ${tag} at HEAD..."
     git tag "$tag"
   else
-    local tag_sha
-    tag_sha="$(git rev-parse "$tag")"
-    if [ "$tag_sha" != "$head_sha" ]; then
-      echo "==> Tag ${tag} was at ${tag_sha:0:7}; moving to HEAD ${head_sha:0:7} for this release..."
+    local existing_sha
+    existing_sha="$(git rev-parse "${tag}^{}")"
+    if [ "$existing_sha" != "$head_sha" ]; then
+      echo "==> Tag ${tag} was at ${existing_sha:0:7}; moving to HEAD ${head_sha:0:7} for this release..."
       git tag -f "$tag"
     fi
   fi
 
+  # shellcheck source=resolve_remote_tag_sha.sh
+  # Inline: annotated tags expose peeled `tag^{}`; lightweight tags only have the plain ref.
+  # Falling back matters — otherwise an existing lightweight remote tag looks absent and
+  # `git push` (non-force) fails with "already exists".
   local remote_sha=""
   remote_sha="$(git ls-remote --tags origin "refs/tags/${tag}^{}" 2>/dev/null | awk '{print $1}' | head -1)"
-  tag_sha="$(git rev-parse "$tag")"
+  if [ -z "$remote_sha" ]; then
+    remote_sha="$(git ls-remote --tags origin "refs/tags/${tag}" 2>/dev/null | awk '{print $1}' | head -1)"
+  fi
+  local tag_sha
+  tag_sha="$(git rev-parse "${tag}^{}")"
 
   if [ -z "$remote_sha" ]; then
     echo "==> Pushing ${tag} to origin..."
-    git push origin "$tag"
+    git push origin "refs/tags/${tag}"
   elif [ "$remote_sha" != "$tag_sha" ]; then
-    echo "==> Updating ${tag} on origin (local release commit differs from remote tag)..."
-    git push --force origin "$tag"
+    echo "==> Updating ${tag} on origin (${remote_sha:0:7} → ${tag_sha:0:7})..."
+    git push --force origin "refs/tags/${tag}"
+  else
+    echo "==> Tag ${tag} already on origin at ${tag_sha:0:7}."
   fi
 }
 

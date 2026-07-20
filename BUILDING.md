@@ -132,7 +132,7 @@ For publishing entirely from your Mac (requires [GitHub CLI](https://cli.github.
 make release
 ```
 
-`make release` runs `scripts/release.sh`: builds, zips, creates/updates the GitHub release, and pushes tag `v{VERSION}` if needed.
+`make release` runs `scripts/release.sh`: builds, zips, creates/updates the GitHub release, and pushes tag `v{VERSION}` if needed. If that tag already exists on origin at a different commit (common when re-releasing after a failed publish), the script force-updates the lightweight/annotated tag ref. It resolves remote tags via `refs/tags/<tag>^{}` with a fallback to `refs/tags/<tag>` so existing lightweight tags are not mistaken for missing.
 
 **Notarized local release** (with `.env` configured):
 

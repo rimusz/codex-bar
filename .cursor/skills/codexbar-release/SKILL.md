@@ -26,6 +26,16 @@ make release RELEASE_TYPE=notarized
 
 Script: `scripts/release.sh`. Requires `gh auth login`. Use one path per version — CI or local, not both.
 
+If `make release` fails while pushing `v{VERSION}` with “already exists”, the script should force-update the remote tag when HEAD differs (lightweight tags must fall back from `tag^{}` to `refs/tags/<tag>`). Re-run `make release` after pulling the script fix, or finish a mid-flight notarized publish with:
+
+```bash
+git push --force origin "refs/tags/v{VERSION}"
+gh release create "v{VERSION}" --title "v{VERSION} (Notarized)" \
+  dist/CodexBar-v{VERSION}.app.zip dist/CodexBar-v{VERSION}-macOS.dmg
+```
+
+(Use `gh release upload … --clobber` if the release already exists.)
+
 ## Checklist
 
 1. Bump `VERSION`
