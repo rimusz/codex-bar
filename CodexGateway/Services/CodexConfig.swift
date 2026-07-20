@@ -7,9 +7,14 @@ enum CodexConfig {
 
   /// Strips both current and legacy managed blocks from Codex config.
   static func stripManagedBlocks(_ content: String) -> String {
+    func blockPattern(start: String, end: String) -> String {
+      let s = NSRegularExpression.escapedPattern(for: start)
+      let e = NSRegularExpression.escapedPattern(for: end)
+      return "\(s)[\\s\\S]*?\(e)\\n?"
+    }
     let patterns = [
-      #"# >>> codexgateway managed >>>[\s\S]*?# <<< codexgateway managed <<<\n?"#,
-      #"# >>> codexbar managed >>>[\s\S]*?# <<< codexbar managed <<<\n?"#,
+      blockPattern(start: AppIdentity.managedStart, end: AppIdentity.managedEnd),
+      blockPattern(start: AppIdentity.legacyManagedStart, end: AppIdentity.legacyManagedEnd),
     ]
     var result = content
     for pattern in patterns {
