@@ -83,40 +83,66 @@ enum AppBundleMigration {
       )
       return false
     }
-    guard let helper = AppUpdater.installHelperURL() else {
-      GatewayLog.error(
-        "Legacy bundle migration skipped: install helper missing under \(Bundle.main.resourceURL?.path ?? "?")"
+
+    // Always use a /tmp script — do not depend on Bundle resource lookup.
+    // Older CodexBar updaters `ditto` without deleting first, which can leave a stale
+    // MacOS/CodexBar binary and/or an old helper that doesn't support --rename-from.
+    let scriptURL = URL(fileURLWithPath: "/tmp/codexgateway-rename-bundle.sh")
+    let logURL = URL(fileURLWithPath: "/tmp/codexgateway_migrate.log")
+    let script = """
+    #!/bin/bash
+    set -euo pipefail
+    FROM=\(shellEscape(current.path))
+    TO=\(shellEscape(target.path))
+    PID=\(getpid())
+    LOG=\(shellEscape(logURL.path))
+    exec >>"$LOG" 2>&1
+    echo "rename: waiting for pid $PID"
+    for _ in $(seq 1 120); do
+      if ! kill -0 "$PID" 2>/dev/null; then
+        break
+      fi
+      sleep 0.5
+    done
+    if kill -0 "$PID" 2>/dev/null; then
+      echo "rename: timed out waiting for pid $PID"
+      exit 1
+    fi
+    if [[ ! -d "$FROM" ]]; then
+      echo "rename: source missing: $FROM"
+      exit 1
+    fi
+    rm -rf "$TO"
+    mv "$FROM" "$TO"
+    xattr -cr "$TO" 2>/dev/null || true
+    echo "rename: $FROM -> $TO"
+    open "$TO"
+    """
+
+    do {
+      try script.write(to: scriptURL, atomically: true, encoding: .utf8)
+      try FileManager.default.setAttributes(
+        [.posixPermissions: 0o755],
+        ofItemAtPath: scriptURL.path
       )
+      FileManager.default.createFile(atPath: logURL.path, contents: nil)
+    } catch {
+      GatewayLog.error("Legacy bundle migration could not write rename script: \(error.localizedDescription)")
       return false
     }
 
-    GatewayLog.info(
-      "Migrating app bundle \(current.path) → \(target.path) via \(helper.lastPathComponent)"
-    )
+    GatewayLog.info("Migrating app bundle \(current.path) → \(target.path) via /tmp rename script")
 
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/bin/bash")
-    process.arguments = [
-      helper.path,
-      "--rename-from", current.path,
-      "--rename-to", target.path,
-      "--pid", String(getpid()),
-    ]
-    // Keep helper output for diagnosis if rename fails.
-    let logURL = URL(fileURLWithPath: "/tmp/codexgateway_migrate.log")
-    FileManager.default.createFile(atPath: logURL.path, contents: nil)
-    if let handle = try? FileHandle(forWritingTo: logURL) {
-      process.standardOutput = handle
-      process.standardError = handle
-    } else {
-      process.standardOutput = FileHandle.nullDevice
-      process.standardError = FileHandle.nullDevice
-    }
+    process.arguments = [scriptURL.path]
+    process.standardOutput = FileHandle.nullDevice
+    process.standardError = FileHandle.nullDevice
 
     do {
       try process.run()
     } catch {
-      GatewayLog.error("Legacy bundle migration failed to launch helper: \(error.localizedDescription)")
+      GatewayLog.error("Legacy bundle migration failed to launch rename script: \(error.localizedDescription)")
       return false
     }
 
@@ -124,5 +150,10 @@ enum AppBundleMigration {
       NSApp.terminate(nil)
     }
     return true
+  }
+
+  /// Single-quote escape for embedding a path in a bash script.
+  static func shellEscape(_ value: String) -> String {
+    "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
   }
 }

@@ -54,6 +54,11 @@ final class AppIdentityTests: XCTestCase {
     ))
   }
 
+  func testShellEscapeQuotesPathsForBash() {
+    XCTAssertEqual(AppBundleMigration.shellEscape("/Applications/CodexBar.app"), "'/Applications/CodexBar.app'")
+    XCTAssertEqual(AppBundleMigration.shellEscape("foo'bar"), "'foo'\\''bar'")
+  }
+
   func testInstallHelperURLFindsExtensionlessResourceInBundle() throws {
     let root = FileManager.default.temporaryDirectory
       .appendingPathComponent("CodexGatewayHelperLookup-\(UUID().uuidString).app", isDirectory: true)
