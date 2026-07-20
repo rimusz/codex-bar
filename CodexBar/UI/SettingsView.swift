@@ -247,9 +247,7 @@ struct SettingsView: View {
         .foregroundStyle(.secondary)
         .lineLimit(2)
         .truncationMode(.middle)
-      Text(preset.supportsModelListingFetch
-        ? "Fetches model list"
-        : "\(preset.catalogModels().count) available model\(preset.catalogModels().count == 1 ? "" : "s")")
+      Text(presetFetchCaption(preset))
         .font(.caption)
         .foregroundStyle(.secondary)
       Spacer(minLength: 0)
@@ -283,10 +281,36 @@ struct SettingsView: View {
     }
   }
 
+  private func presetFetchCaption(_ preset: ProviderPreset) -> String {
+    if preset.supportsLiveCatalogRefresh {
+      return "Fetches live Cline Pass catalog"
+    }
+    if preset.supportsModelListingFetch {
+      return "Fetches model list"
+    }
+    let count = preset.catalogModels().count
+    return "\(count) available model\(count == 1 ? "" : "s")"
+  }
+
+  private func providerCanFetchModels(_ provider: ProviderConfig) -> Bool {
+    ProviderPreset.matching(providerID: provider.name)?.canFetchModels ?? true
+  }
+
+  private func fetchHelp(for provider: ProviderConfig, highlight: Bool) -> String {
+    if ProviderPreset.matching(providerID: provider.name)?.supportsLiveCatalogRefresh == true {
+      return highlight
+        ? "Fetch the Cline Pass model list before adding a model (no API key required)."
+        : "Refresh the Cline Pass model list (no API key required)."
+    }
+    return highlight
+      ? "Fetch the provider's model list before adding a model."
+      : "Refresh the provider's model list."
+  }
+
   private func providerRow(_ provider: ProviderConfig) -> some View {
     let choices = modelCatalogChoices(for: provider)
     let preset = ProviderPreset.matching(providerID: provider.name)
-    let canFetch = preset?.supportsModelListingFetch ?? true
+    let canFetch = providerCanFetchModels(provider)
     let canAdd = !choices.isEmpty || canFetch || preset?.usesCatalogModels == true
     let isFetching = fetchingProviderID == provider.name
     let addedCount = store.models.filter {
@@ -305,7 +329,7 @@ struct SettingsView: View {
               .foregroundStyle(.secondary)
           }
           if !choices.isEmpty {
-            Text("\(choices.count) \(preset?.usesCatalogModels == true ? "in catalog" : "available")")
+            Text("\(choices.count) available")
               .font(.caption2)
               .foregroundStyle(.green)
           } else if canFetch {
@@ -366,7 +390,7 @@ struct SettingsView: View {
       .controlSize(.small)
       .buttonStyle(.borderedProminent)
       .disabled(isFetching)
-      .help("Fetch the provider's model list before adding a model.")
+      .help(fetchHelp(for: provider, highlight: true))
     } else {
       Button {
         fetchModels(for: provider)
@@ -376,7 +400,7 @@ struct SettingsView: View {
       .controlSize(.small)
       .buttonStyle(.borderless)
       .disabled(isFetching)
-      .help("Refresh the provider's model list.")
+      .help(fetchHelp(for: provider, highlight: false))
     }
   }
 
@@ -773,7 +797,7 @@ struct SettingsView: View {
       }
     }
 
-    let canFetch = preset?.supportsModelListingFetch ?? true
+    let canFetch = providerCanFetchModels(provider)
     if canFetch {
       loadingModelChoices = true
       fetchModels(for: provider) { models in
@@ -878,13 +902,22 @@ struct SettingsView: View {
   }
 
   private func catalogModels(from fetched: [FetchedModel], for provider: ProviderConfig) -> [CatalogModel] {
-    fetched.map { fetchedModel in
-      CatalogModel(
+    let liveCline = ProviderPreset.matching(providerID: provider.name)?.supportsLiveCatalogRefresh == true
+    return fetched.map { fetchedModel in
+      let displayName: String
+      if liveCline {
+        let label = fetchedModel.ownedBy?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let base = (label?.isEmpty == false ? label! : ClinePassCatalog.displayLabel(for: fetchedModel.id))
+        displayName = ClinePassCatalog.displayName(for: base)
+      } else {
+        displayName = ModelCatalog.prettyDisplayName(from: fetchedModel.id, providerID: provider.name)
+      }
+      return CatalogModel(
         slug: "\(provider.name)/\(ProviderPreset.slugPart(from: fetchedModel.id))",
         model: fetchedModel.id,
         provider: provider.name,
         backend_provider: provider.name,
-        display_name: ModelCatalog.prettyDisplayName(from: fetchedModel.id, providerID: provider.name),
+        display_name: displayName,
         visibility: "list",
         input_modalities: nil,
         vision_bridge_enabled: nil,
@@ -911,7 +944,7 @@ struct SettingsView: View {
     fetchErrorMessage = nil
     Task {
       do {
-        let models = try await ProviderModelFetcher.fetch(baseURL: provider.base_url, apiKey: provider.api_key)
+        let models = try await ProviderModelFetcher.fetch(for: provider)
         await MainActor.run {
           store.saveFetchedModels(models, for: provider.name)
           fetchingProviderID = nil

@@ -79,7 +79,7 @@ You can add, edit, and delete providers. A provider can't be removed while it st
 
 ### Models
 
-Click **Add model** to fetch the provider's model list and choose which to install. (Cline Pass uses a fixed catalog instead of a live fetch.)
+Click **Add model** to fetch the provider's model list and choose which to install. Cline Pass uses Cline's public recommended-models feed (no API key required for listing).
 
 Display names are auto-formatted into friendly, provider-prefixed names — Cline style:
 

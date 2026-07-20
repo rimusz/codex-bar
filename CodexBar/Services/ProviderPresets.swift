@@ -85,10 +85,11 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
     case .xai: return "grok-4"
     case .openrouter: return "openrouter/auto"
     case .ollama: return "llama3.2"
-    case .clinePass: return nil
+    case .clinePass: return "cline-pass/glm-5.2"
     }
   }
 
+  /// Whether CodexBar can discover models via `GET {base_url}/models`.
   var supportsModelListingFetch: Bool {
     switch self {
     case .clinePass:
@@ -98,8 +99,29 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
     }
   }
 
+  /// Whether models come from Cline's public recommended-models feed (no API key).
+  var supportsLiveCatalogRefresh: Bool {
+    switch self {
+    case .clinePass: return true
+    default: return false
+    }
+  }
+
+  /// True when the provider exposes a fetchable model list (OpenAI `/models` or live catalog).
+  var canFetchModels: Bool {
+    supportsModelListingFetch || supportsLiveCatalogRefresh
+  }
+
+  /// Static catalog fallback (no live fetch). Unused while every preset either fetches or has a suggested seed.
   var usesCatalogModels: Bool {
-    !supportsModelListingFetch
+    !canFetchModels
+  }
+
+  var catalogDocumentationURL: URL? {
+    switch self {
+    case .clinePass: return ClinePassCatalog.documentationURL
+    default: return nil
+    }
   }
 
   func providerConfig(apiKey: String) -> ProviderConfig {
@@ -114,37 +136,20 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
   }
 
   func catalogModels() -> [CatalogModel] {
-    switch self {
-    case .clinePass:
-      return ClinePassCatalog.models.map { entry in
-        CatalogModel(
-          slug: "\(providerID)/\(ProviderPreset.slugPart(from: entry.modelID))",
-          model: entry.modelID,
-          provider: providerID,
-          backend_provider: providerID,
-          display_name: ClinePassCatalog.displayName(for: entry.name),
-          visibility: "list",
-          input_modalities: nil,
-          vision_bridge_enabled: nil,
-          context_window: nil
-        )
-      }
-    default:
-      guard let suggestedModel else { return [] }
-      return [
-        CatalogModel(
-          slug: "\(providerID)/\(ProviderPreset.slugPart(from: suggestedModel))",
-          model: suggestedModel,
-          provider: providerID,
-          backend_provider: providerID,
-          display_name: defaultDisplayName(for: suggestedModel),
-          visibility: "list",
-          input_modalities: nil,
-          vision_bridge_enabled: nil,
-          context_window: nil
-        )
-      ]
-    }
+    guard let suggestedModel else { return [] }
+    return [
+      CatalogModel(
+        slug: "\(providerID)/\(ProviderPreset.slugPart(from: suggestedModel))",
+        model: suggestedModel,
+        provider: providerID,
+        backend_provider: providerID,
+        display_name: defaultDisplayName(for: suggestedModel),
+        visibility: "list",
+        input_modalities: nil,
+        vision_bridge_enabled: nil,
+        context_window: nil
+      )
+    ]
   }
 
   private func defaultDisplayName(for model: String) -> String {
@@ -158,7 +163,8 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
     case .xai: return "xAI Grok 4"
     case .openrouter: return "OpenRouter Auto"
     case .ollama: return "Ollama Llama 3.2"
-    case .clinePass: return model
+    case .clinePass:
+      return ClinePassCatalog.displayName(for: ClinePassCatalog.displayLabel(for: model))
     }
   }
 
@@ -183,31 +189,51 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
   ]
 }
 
-/// Model catalog from Cline Pass docs.
+/// Helpers for Cline Pass model listing (live feed + display labels).
+///
+/// Docs: [ClinePass — Models](https://docs.cline.bot/getting-started/clinepass#models).
+/// Shared with GrokBuild Desktop's recommended-models fetch path.
 enum ClinePassCatalog {
-  struct Entry: Hashable {
-    var name: String
-    var modelID: String
+  static let documentationURL = URL(string: "https://docs.cline.bot/getting-started/clinepass#models")!
+
+  /// Public Cline recommended-models feed (includes a `clinePass` array; no API key required).
+  static let recommendedModelsURL = URL(
+    string: "https://api.cline.bot/api/v1/ai/cline/recommended-models"
+  )!
+
+  /// Human-readable label derived from a Cline Pass model id slug.
+  static func displayLabel(for modelID: String) -> String {
+    let slug = modelID.split(separator: "/").last.map(String.init) ?? modelID
+    let acronyms: Set<String> = ["glm", "gpt"]
+    return slug
+      .split(separator: "-")
+      .map { part -> String in
+        let token = String(part)
+        if token.allSatisfy({ $0.isNumber || $0 == "." }) { return token }
+        let lower = token.lowercased()
+        if acronyms.contains(lower) { return lower.uppercased() }
+        return token.prefix(1).uppercased() + token.dropFirst()
+      }
+      .joined(separator: " ")
   }
 
-  static let models: [Entry] = [
-    Entry(name: "GLM-5.2", modelID: "cline-pass/glm-5.2"),
-    Entry(name: "Kimi K2.7 Code", modelID: "cline-pass/kimi-k2.7-code"),
-    Entry(name: "Kimi K2.6", modelID: "cline-pass/kimi-k2.6"),
-    Entry(name: "DeepSeek V4 Pro", modelID: "cline-pass/deepseek-v4-pro"),
-    Entry(name: "DeepSeek V4 Flash", modelID: "cline-pass/deepseek-v4-flash"),
-    Entry(name: "MiMo-V2.5", modelID: "cline-pass/mimo-v2.5"),
-    Entry(name: "MiMo-V2.5-Pro", modelID: "cline-pass/mimo-v2.5-pro"),
-    Entry(name: "MiniMax M3", modelID: "cline-pass/minimax-m3"),
-    Entry(name: "Qwen3.7 Max", modelID: "cline-pass/qwen3.7-max"),
-    Entry(name: "Qwen3.7 Plus", modelID: "cline-pass/qwen3.7-plus")
-  ]
-
+  /// Display name written to the catalog (e.g. "Cline Kimi K2.7 Code").
   static func displayName(for catalogName: String) -> String {
     let trimmed = catalogName.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty else { return "" }
     if trimmed.lowercased().hasPrefix("cline ") { return trimmed }
     return "Cline \(trimmed)"
+  }
+
+  /// Sorts models A–Z by display label (falls back to id), so related names stay adjacent.
+  static func sortedAlphabetically(_ models: [FetchedModel]) -> [FetchedModel] {
+    models.sorted { lhs, rhs in
+      let left = (lhs.ownedBy?.isEmpty == false ? lhs.ownedBy! : lhs.id)
+      let right = (rhs.ownedBy?.isEmpty == false ? rhs.ownedBy! : rhs.id)
+      let labelOrder = left.localizedCaseInsensitiveCompare(right)
+      if labelOrder != .orderedSame { return labelOrder == .orderedAscending }
+      return lhs.id.localizedCaseInsensitiveCompare(rhs.id) == .orderedAscending
+    }
   }
 }
 
