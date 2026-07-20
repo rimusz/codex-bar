@@ -8,9 +8,7 @@ enum UpdateDebugSimulator {
   private(set) static var isAppSimulationActive = false
 
   static func isSimulatedAppRelease(_ release: UpdateChecker.AppRelease) -> Bool {
-    release.latestVersion == simulatedAppVersion
-      && release.downloadURL == nil
-      && release.updateAvailable
+    release.latestVersion == simulatedAppVersion && release.updateAvailable
   }
 
   static func apply() {
@@ -37,7 +35,8 @@ enum UpdateDebugSimulator {
       latestVersion: simulatedAppVersion,
       tagName: "v\(simulatedAppVersion)",
       releaseURL: URL(string: "https://github.com/rimusz/codex-bar/releases/latest")!,
-      downloadURL: nil,
+      // Non-nil so canInstallInApp is true without relying solely on forceCanInstallInApp.
+      downloadURL: URL(string: "https://example.com/CodexBar-v\(simulatedAppVersion).app.zip"),
       publishedAt: Date(),
       updateAvailable: true
     )

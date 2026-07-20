@@ -42,6 +42,22 @@ enum UpdateScheduler {
       return
     }
 
+#if DEBUG
+    // Keep an active debug simulation so Check for Updates… can still show the install UI.
+    if UpdateDebugSimulator.isAppSimulationActive {
+      UpdateSettingsStore.lastCheckDate = Date()
+      NotificationCenter.default.post(name: .codexBarUpdateStateChanged, object: nil)
+      if hasActionableAppUpdate, let release = cachedAppRelease {
+        NotificationCenter.default.post(
+          name: .codexBarUpdateAvailable,
+          object: nil,
+          userInfo: ["appVersion": release.latestVersion]
+        )
+      }
+      return
+    }
+#endif
+
     let app = await fetchAppRelease()
     UpdateSettingsStore.lastCheckDate = Date()
 

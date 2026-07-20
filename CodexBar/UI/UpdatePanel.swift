@@ -215,10 +215,11 @@ private final class UpdatePanelHost: NSObject {
     var constraints: [NSLayoutConstraint] = [
       effect.widthAnchor.constraint(equalToConstant: panelWidth),
 
+      // Pin top/leading/trailing only — height comes from the content chain so
+      // fittingSize includes the button stack (bottom pin would fight measurement).
       container.topAnchor.constraint(equalTo: effect.topAnchor),
       container.leadingAnchor.constraint(equalTo: effect.leadingAnchor),
       container.trailingAnchor.constraint(equalTo: effect.trailingAnchor),
-      container.bottomAnchor.constraint(equalTo: effect.bottomAnchor),
 
       iconView.topAnchor.constraint(equalTo: container.topAnchor, constant: 16),
       iconView.centerXAnchor.constraint(equalTo: container.centerXAnchor),
@@ -285,7 +286,9 @@ private final class UpdatePanelHost: NSObject {
 
     NSLayoutConstraint.activate(constraints)
     container.layoutSubtreeIfNeeded()
-    effect.heightAnchor.constraint(equalToConstant: container.fittingSize.height).isActive = true
+    let contentHeight = ceil(max(container.fittingSize.height, 1))
+    effect.heightAnchor.constraint(equalToConstant: contentHeight).isActive = true
+    effect.bottomAnchor.constraint(equalTo: container.bottomAnchor).isActive = true
     return effect
   }
 
@@ -300,12 +303,13 @@ private final class UpdatePanelHost: NSObject {
     stack.orientation = .vertical
     stack.alignment = .centerX
     stack.spacing = 8
+    stack.translatesAutoresizingMaskIntoConstraints = false
 
     if let primaryTitle {
       let button = NSButton(title: primaryTitle, target: self, action: primaryAction)
-      button.bezelStyle = .push
-      button.bezelColor = .controlAccentColor
-      button.contentTintColor = .white
+      // System default (Return) button keeps label contrast correct on macOS Tahoe+.
+      button.bezelStyle = .rounded
+      button.keyEquivalent = "\r"
       button.isEnabled = primaryEnabled
       stack.addArrangedSubview(button)
     }

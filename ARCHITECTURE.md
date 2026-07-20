@@ -117,7 +117,7 @@ CodexBar checks `https://api.github.com/repos/rimusz/codex-bar/releases` for the
 | `UpdateScheduler` | Launch + daily background check (30s delay, 24h interval) |
 | `UpdateChecker` | GitHub API, semver compare, asset `CodexBar-{tag}.app.zip` |
 | `AppUpdater` | Download, codesign/spctl verify, install via `codexbar-install-update` helper |
-| `UpdatePanel` | Menu **Check for Updates…** / **Upgrade Available…** (⌘U); **Update App** → download/verify → **Install and Restart** |
+| `UpdatePanel` | Menu **Check for Updates…** / **Upgrade Available…** (⌘U); primary action is a system default button (**Update App** → download/verify → **Install and Restart**, or **Open Release Page** when the notarized release has no `.app.zip`). Panel height is measured from the content chain (including the button stack) so actions are not clipped. |
 | `UpdatePanelModel` | Pure UI decisions (install button vs open release page; skip vs notify) |
 | `UpdateSettingsStore` | UserDefaults: auto-check, skip version, last check |
 

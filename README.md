@@ -134,7 +134,7 @@ Menu bar → **Check for Updates…** (⌘U) checks GitHub for a newer **notariz
 1. **Update App** — downloads `CodexBar-{tag}.app.zip` and verifies the signature  
 2. **Install and Restart** — replaces the running app via the bundled `codexbar-install-update` helper and relaunches  
 
-Only **notarized** releases with a `.app.zip` asset are installable in-app. Unsigned CI releases are ignored (use the DMG from GitHub manually). If you previously chose **Skip This Version**, **Check for Updates…** still offers **Update App** so you can install later.
+Only **notarized** releases with a `.app.zip` asset are installable in-app (**Update App**). Unsigned CI releases are ignored (use the DMG from GitHub manually). If the panel says an update is available but only offers **Open Release Page**, the GitHub release is missing the `CodexBar-{tag}.app.zip` asset. If you previously chose **Skip This Version**, **Check for Updates…** still offers **Update App** so you can install later.
 
 Unsigned CI releases are published for manual install only.
 
