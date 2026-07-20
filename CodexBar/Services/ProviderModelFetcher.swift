@@ -30,6 +30,13 @@ enum ProviderModelFetcher {
       case .decode: return "Could not read the model list from the provider."
       }
     }
+
+  }
+
+  static func fetchError(forStatusCode statusCode: Int) -> FetchError? {
+    if statusCode == 401 || statusCode == 403 { return .unauthorized }
+    guard !(200..<300).contains(statusCode) else { return nil }
+    return .http(statusCode)
   }
 
   static func modelsURL(for baseURL: String) -> URL? {
@@ -92,9 +99,9 @@ enum ProviderModelFetcher {
       throw FetchError.transport(error.localizedDescription)
     }
 
-    if let http = response as? HTTPURLResponse {
-      if http.statusCode == 401 || http.statusCode == 403 { throw FetchError.unauthorized }
-      guard (200..<300).contains(http.statusCode) else { throw FetchError.http(http.statusCode) }
+    if let http = response as? HTTPURLResponse,
+       let error = fetchError(forStatusCode: http.statusCode) {
+      throw error
     }
 
     guard let models = parse(data) else { throw FetchError.decode }
@@ -118,8 +125,9 @@ enum ProviderModelFetcher {
       throw FetchError.transport(error.localizedDescription)
     }
 
-    if let http = response as? HTTPURLResponse {
-      guard (200..<300).contains(http.statusCode) else { throw FetchError.http(http.statusCode) }
+    if let http = response as? HTTPURLResponse,
+       let error = fetchError(forStatusCode: http.statusCode) {
+      throw error
     }
 
     guard let models = parseClinePassRecommended(data) else { throw FetchError.decode }
@@ -143,7 +151,7 @@ enum ProviderModelFetcher {
             !id.isEmpty,
             id.hasPrefix("cline-pass/") else { continue }
       guard seen.insert(id).inserted else { continue }
-      models.append(FetchedModel(id: id, ownedBy: ClinePassCatalog.displayLabel(for: id)))
+      models.append(FetchedModel(id: id, ownedBy: preferredClinePassName(from: entry, id: id)))
     }
     return ClinePassCatalog.sortedAlphabetically(models)
   }
@@ -154,5 +162,24 @@ enum ProviderModelFetcher {
       return try await fetchClinePassRecommended()
     }
     return try await fetch(baseURL: provider.base_url, apiKey: provider.api_key)
+  }
+
+  private static func preferredClinePassName(from entry: [String: Any], id: String) -> String {
+    let fallback = ClinePassCatalog.displayLabel(for: id)
+    guard let rawName = entry["name"] as? String else { return fallback }
+    let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !name.isEmpty, !isIdentifierLikeClinePassName(name, id: id) else { return fallback }
+    return name
+  }
+
+  private static func isIdentifierLikeClinePassName(_ name: String, id: String) -> Bool {
+    let lowercasedName = name.lowercased()
+    let lowercasedID = id.lowercased()
+    if lowercasedName == lowercasedID { return true }
+
+    let slug = id.split(separator: "/").last.map(String.init)?.lowercased() ?? lowercasedID
+    if lowercasedName == slug { return true }
+
+    return name.contains("/") || name.contains("_") || (name == lowercasedName && name.contains("-"))
   }
 }

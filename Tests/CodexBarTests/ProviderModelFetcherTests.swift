@@ -86,10 +86,10 @@ final class ProviderModelFetcherTests: XCTestCase {
           "recommended": [],
           "clinePass": [
             {"id": "cline-pass/glm-5.2", "name": "cline-pass/glm-5.2"},
-            {"id": "cline-pass/kimi-k3", "name": "cline-pass/kimi-k3"},
+            {"id": "cline-pass/kimi-k3", "name": "Kimi K3"},
             {"id": "other/skip-me", "name": "skip"},
-            {"id": "cline-pass/deepseek-v4-pro", "name": "cline-pass/deepseek-v4-pro"},
-            {"id": "cline-pass/kimi-k2.6", "name": "cline-pass/kimi-k2.6"},
+            {"id": "cline-pass/deepseek-v4-pro", "name": "DeepSeek V4 Pro"},
+            {"id": "cline-pass/kimi-k2.6", "name": "kimi-k2.6"},
             {"id": "cline-pass/glm-5.2", "name": "duplicate"}
           ]
         }
@@ -105,8 +105,23 @@ final class ProviderModelFetcherTests: XCTestCase {
                 "cline-pass/kimi-k3"
             ]
         )
-        XCTAssertEqual(models.first?.ownedBy, "Deepseek V4 Pro")
+        XCTAssertEqual(models.first?.ownedBy, "DeepSeek V4 Pro")
         XCTAssertEqual(models[1].ownedBy, "GLM 5.2")
+        XCTAssertEqual(models[2].ownedBy, "Kimi K2.6")
+        XCTAssertEqual(models[3].ownedBy, "Kimi K3")
+    }
+
+    func testFetchErrorMapsUnauthorizedStatusesConsistently() {
+        guard case .unauthorized? = ProviderModelFetcher.fetchError(forStatusCode: 401) else {
+            return XCTFail("Expected 401 to map to unauthorized")
+        }
+        guard case .unauthorized? = ProviderModelFetcher.fetchError(forStatusCode: 403) else {
+            return XCTFail("Expected 403 to map to unauthorized")
+        }
+        guard case .http(404)? = ProviderModelFetcher.fetchError(forStatusCode: 404) else {
+            return XCTFail("Expected 404 to map to http(404)")
+        }
+        XCTAssertNil(ProviderModelFetcher.fetchError(forStatusCode: 204))
     }
 
     func testClinePassSortedAlphabeticallyByDisplayLabel() {
