@@ -1,8 +1,8 @@
 # CodexGateway
 
-**Use any OpenAI-compatible model in Codex Desktop — from a macOS menu bar app.**
+**Use any OpenAI-compatible model in Codex Desktop and Codex CLI — from a macOS menu bar app.**
 
-Codex Desktop normally talks only to OpenAI's own models. CodexGateway sits quietly in your menu bar and runs a tiny local gateway that lets Codex route to **third-party providers** (xAI, DeepSeek, OpenRouter, Z.ai, Kimi, Qwen, MiniMax, Cline Pass, …) or **local models** (Ollama) — while still passing native GPT/ChatGPT requests straight through to OpenAI. You manage everything from a native **Settings** window; no terminal or browser required.
+Codex Desktop and the Codex CLI normally talk only to OpenAI's own models. CodexGateway sits quietly in your menu bar and runs a tiny local gateway that lets both route to **third-party providers** (xAI, DeepSeek, OpenRouter, Z.ai, Kimi, Qwen, MiniMax, Cline Pass, …) or **local models** (Ollama) — while still passing native GPT/ChatGPT requests straight through to OpenAI. You configure providers and models in a native **Settings** window; Desktop and CLI then share the same gateway via `~/.codex/config.toml`.
 
 ![CodexGateway Settings and menu bar](docs/screenshots/settings-and-menu.png)
 
@@ -15,22 +15,25 @@ Codex Desktop normally talks only to OpenAI's own models. CodexGateway sits quie
 ## How it works
 
 ```text
-Codex Desktop
-     │  HTTP (loopback)
-     ▼
-CodexGateway gateway — 127.0.0.1:8765
-     │
-     ├─ custom model → third-party provider API   (Responses ⇄ Chat Completions)
-     └─ native GPT   → OpenAI / ChatGPT backend    (passed through unchanged)
+Codex Desktop          Codex CLI
+     │                      │
+     └──────────┬───────────┘
+                │  HTTP (loopback)
+                ▼
+     CodexGateway gateway — 127.0.0.1:8765
+                │
+                ├─ custom model → third-party provider API   (Responses ⇄ Chat Completions)
+                └─ native GPT   → OpenAI / ChatGPT backend    (passed through unchanged)
 ```
 
-- **Gateway** — a small embedded Swift HTTP server on `127.0.0.1:8765` (loopback only). Codex is pointed at it via a managed block in `~/.codex/config.toml`.
+- **Gateway** — a small embedded Swift HTTP server on `127.0.0.1:8765` (loopback only). Desktop and CLI are pointed at it via a managed block in `~/.codex/config.toml` (same config for both).
 - **Routing** — requests for your custom models are translated (OpenAI *Responses* ⇄ *Chat Completions*) and forwarded to the provider's API with your key; native models are passed through to OpenAI/ChatGPT unchanged.
-- **Menu bar + Settings** — a status icon shows gateway health and port; the Settings window is where you add providers, pick models, and sync Codex's model picker.
+- **Menu bar + Settings** — a status icon shows gateway health and port; Settings is where you add providers, pick models, and sync the catalog Codex Desktop/CLI read.
 
 ## Features
 
-- **Third-party & local models in Codex** via Responses ⇄ Chat Completions translation
+- **Third-party & local models in Codex Desktop and CLI** via Responses ⇄ Chat Completions translation
+- **Shared model catalog** — Settings exports models into `~/.codex` so Desktop’s picker and the CLI both see them
 - **Native GPT pass-through** — official OpenAI / ChatGPT requests are untouched
 - **No Codex sign-in needed for local-only use** (e.g. Ollama); sign-in is only required for native GPT/ChatGPT
 - **Menu bar status** with live gateway state + port, and a native Settings window
@@ -42,7 +45,7 @@ CodexGateway gateway — 127.0.0.1:8765
 ## Requirements
 
 - macOS 26 or later
-- [Codex Desktop](https://openai.com/codex) installed
+- [Codex Desktop](https://openai.com/codex) and/or the [Codex CLI](https://openai.com/codex) installed
 - Xcode Command Line Tools (only if building from source)
 
 ## Install
@@ -76,8 +79,8 @@ Existing installs upgrade smoothly:
 3. Open **Settings** (menu bar → Settings, or ⌘,).
 4. **Install a provider preset** and enter its API key (skipped for keyless providers like Ollama).
 5. Click **Add model** on the provider row and pick the models you want.
-6. Restart Codex when prompted (**Restart Codex**, ⌘R) so its picker refreshes.
-7. In Codex Desktop, open the model picker — your models are now listed.
+6. Restart Codex when prompted (**Restart Codex**, ⌘R) so Desktop/CLI reload config.
+7. Pick a model in **Codex Desktop** (model picker) or the **Codex CLI** — your custom models are available in both.
 
 > **Custom models require you to be signed in to Codex** — a **free account is enough**. Signed out, Codex only shows its built-in fallback models and labels any active custom model as "Custom". (Native GPT/ChatGPT models still need an OpenAI/ChatGPT account.) When you have custom models but Codex is signed out, Settings shows a reminder.
 
@@ -106,7 +109,7 @@ Doubled vendor prefixes are collapsed, and any name you edit yourself is preserv
 
 ### When does Codex need a restart?
 
-Only when you **add, edit, or delete a model** — those change Codex's exported picker catalog, and Settings will surface a **Restart Codex** button. **Provider** changes (including installing a preset) take effect **immediately** — the gateway reads endpoints and keys live from `~/.codexgateway/providers.json`, so no restart is required.
+Only when you **add, edit, or delete a model** — those change Codex's exported model catalog (Desktop picker + CLI), and Settings will surface a **Restart Codex** button. **Provider** changes (including installing a preset) take effect **immediately** — the gateway reads endpoints and keys live from `~/.codexgateway/providers.json`, so no restart is required.
 
 The menu-bar **Restart Codex** action (⌘R) always asks for confirmation first.
 
@@ -137,9 +140,9 @@ CodexGateway keeps its own data under `~/.codexgateway/` and writes only a clear
 | `~/.codexgateway/custom_model_catalog.json` | Your installed models + routing metadata |
 | `~/.codexgateway/fetched_models.json` | Cache of provider model lists |
 | `~/.codex/config.toml` | Codex config — CodexGateway patches a managed block only |
-| `~/.codex/model-catalogs/custom-providers.json` | Codex picker export (native models **plus** your custom ones) |
+| `~/.codex/model-catalogs/custom-providers.json` | Codex model catalog export for Desktop + CLI (native models **plus** your custom ones) |
 
-The exported picker catalog always includes the native ChatGPT/Codex models, so installing CodexGateway never hides the built-in choices.
+The exported catalog always includes the native ChatGPT/Codex models, so installing CodexGateway never hides the built-in choices in Desktop or CLI.
 
 ## Updates
 
@@ -353,3 +356,7 @@ CodexGateway models appear under provider group **"Custom OpenAI-compatible"** i
 ## Contributing
 
 CodexGateway is a pure-Swift SwiftPM app (no Xcode project). See [ARCHITECTURE.md](ARCHITECTURE.md) for the app map, gateway routes, config paths, and a "common tasks → files" lookup, and [AGENTS.md](AGENTS.md) for repo conventions.
+
+## Licence
+
+[Apache License 2.0](LICENSE). CodexGateway is an independent macOS menu-bar app with a local gateway for [Codex Desktop](https://openai.com/codex/) and CLI; it is not affiliated with, endorsed by, or sponsored by OpenAI.
