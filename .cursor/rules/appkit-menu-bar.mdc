@@ -23,4 +23,4 @@ alwaysApply: false
 
 ## After changing menu bar or delegate
 
-Run `make test` if logic changed; update `ARCHITECTURE.md` and `README.md` for user-visible behavior. See `docs-and-tests.mdc`.
+Run `make test` if logic changed; `make run`; **always use Computer Use to test changes** (status item menu, Settings entry, status copy). Update `ARCHITECTURE.md` and `README.md` for user-visible behavior. See `docs-and-tests.mdc` and `codexgateway-dev` skill.

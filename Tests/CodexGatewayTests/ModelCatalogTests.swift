@@ -38,6 +38,18 @@ final class ModelCatalogTests: XCTestCase {
         XCTAssertEqual(provider.displayLabel, "Cline Pass")
     }
 
+    func testProviderDisplayLabelPrefersStoredNameOverPreset() {
+        let provider = ProviderConfig(
+            name: "xai",
+            display_name: "My xAI",
+            base_url: "https://api.x.ai/v1",
+            api_key: "k",
+            vision_model: nil
+        )
+        XCTAssertEqual(provider.displayLabel, "My xAI")
+        XCTAssertEqual(ProviderPreset.matching(providerID: "xai")?.displayName, "xAI Grok (API)")
+    }
+
     func testCatalogModelParsingDefaults() {
         let model = ModelCatalog.catalogModel(from: [
             "slug": "minimax/m2.5",
@@ -213,11 +225,52 @@ final class ModelCatalogTests: XCTestCase {
         )
         XCTAssertEqual(
             ModelCatalog.prettyDisplayName(from: "grok-4.3", providerID: "xai"),
-            "xAI Grok 4.3"
+            "xAI Grok 4.3 (API)"
         )
+        XCTAssertEqual(
+            ModelCatalog.prettyDisplayName(from: "grok-4.3", providerID: "grok-oauth"),
+            "xAI Grok 4.3 (OAuth)"
+        )
+        XCTAssertEqual(ModelCatalog.providerBrand(for: "xai"), "xAI")
+        XCTAssertEqual(ModelCatalog.providerBrand(for: "grok-oauth"), "xAI")
         XCTAssertEqual(
             ModelCatalog.prettyDisplayName(from: "deepseek/deepseek-chat-v3-0324", providerID: "openrouter"),
             "OpenRouter DeepSeek Chat V3 0324"
+        )
+    }
+
+    func testSortedProvidersAndModelsAreAlphabetical() {
+        let providers = [
+            ProviderConfig(name: "xai", display_name: nil, base_url: "https://api.x.ai/v1", api_key: "k"),
+            ProviderConfig(name: "clinepass", display_name: nil, base_url: "https://api.cline.bot/api/v1", api_key: "k"),
+            ProviderConfig(name: "grok-oauth", display_name: nil, base_url: GrokOAuthClient.defaultBaseURL, api_key: "")
+        ]
+        XCTAssertEqual(
+            ModelCatalog.sortedProviders(providers).map(\.displayLabel),
+            ["Cline Pass", "xAI Grok (API)", "xAI Grok (OAuth)"]
+        )
+
+        let models = [
+            CatalogModel(
+                slug: "xai/grok-4.5", model: "grok-4.5", provider: "xai", backend_provider: "xai",
+                display_name: "xAI Grok 4.5 (API)", visibility: "list",
+                input_modalities: nil, vision_bridge_enabled: nil, context_window: nil
+            ),
+            CatalogModel(
+                slug: "clinepass/a", model: "a", provider: "clinepass", backend_provider: "clinepass",
+                display_name: "Cline GLM-5.2", visibility: "list",
+                input_modalities: nil, vision_bridge_enabled: nil, context_window: nil
+            ),
+            CatalogModel(
+                slug: "grok-oauth/grok-4.5", model: "grok-4.5", provider: "grok-oauth",
+                backend_provider: "grok-oauth",
+                display_name: "xAI Grok 4.5 (OAuth)", visibility: "list",
+                input_modalities: nil, vision_bridge_enabled: nil, context_window: nil
+            )
+        ]
+        XCTAssertEqual(
+            ModelCatalog.sortedCatalogModels(models).map { $0.display_name ?? "" },
+            ["Cline GLM-5.2", "xAI Grok 4.5 (API)", "xAI Grok 4.5 (OAuth)"]
         )
     }
 
@@ -251,9 +304,20 @@ final class ModelCatalogTests: XCTestCase {
             display_name: "My Grok", visibility: "list",
             input_modalities: nil, vision_bridge_enabled: nil, context_window: nil
         )
-        XCTAssertEqual(ModelCatalog.normalizedDisplayName(for: raw), "xAI Grok 4.3")
-        XCTAssertEqual(ModelCatalog.normalizedDisplayName(for: unbranded), "xAI Grok 4.3")
+        XCTAssertEqual(ModelCatalog.normalizedDisplayName(for: raw), "xAI Grok 4.3 (API)")
+        XCTAssertEqual(ModelCatalog.normalizedDisplayName(for: unbranded), "xAI Grok 4.3 (API)")
         XCTAssertEqual(ModelCatalog.normalizedDisplayName(for: customized), "My Grok")
+
+        let legacyBranded = CatalogModel(
+            slug: "grok-oauth/grok-4.5", model: "grok-4.5",
+            provider: "grok-oauth", backend_provider: "grok-oauth",
+            display_name: "xAI Grok 4.5", visibility: "list",
+            input_modalities: nil, vision_bridge_enabled: nil, context_window: nil
+        )
+        XCTAssertEqual(
+            ModelCatalog.normalizedDisplayName(for: legacyBranded),
+            "xAI Grok 4.5 (OAuth)"
+        )
     }
 
     func testProviderHasInstalledModelsErrorDescription() {

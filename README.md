@@ -2,13 +2,13 @@
 
 **Use any OpenAI-compatible model in Codex Desktop and Codex CLI — from a macOS menu bar app.**
 
-Codex Desktop and the Codex CLI normally talk only to OpenAI's own models. CodexGateway sits quietly in your menu bar and runs a tiny local gateway that lets both route to **third-party providers** (xAI, DeepSeek, OpenRouter, Z.ai, Kimi, Qwen, MiniMax, Cline Pass, …) or **local models** (Ollama) — while still passing native GPT/ChatGPT requests straight through to OpenAI. You configure providers and models in a native **Settings** window; Desktop and CLI then share the same gateway via `~/.codex/config.toml`.
+Codex Desktop and the Codex CLI normally talk only to OpenAI's own models. CodexGateway sits quietly in your menu bar and runs a tiny local gateway that lets both route to **third-party providers** (xAI API key, Grok OAuth via the official Grok CLI, DeepSeek, OpenRouter, Z.ai, Kimi, Qwen, MiniMax, Cline Pass, …) or **local models** (Ollama) — while still passing native GPT/ChatGPT requests straight through to OpenAI. You configure providers and models in a native **Settings** window; Desktop and CLI then share the same gateway via `~/.codex/config.toml`.
 
 ![CodexGateway Settings and menu bar](docs/screenshots/settings-and-menu.png)
 
 > **Formerly CodexBar.** The app was renamed to **CodexGateway**. Existing installs keep your providers and keys — see [Upgrading from CodexBar](#upgrading-from-codexbar).
 
-> Providers must expose an OpenAI-compatible `/chat/completions` endpoint. (Cursor's API, for example, only lists models and has no public chat-completions endpoint, so it can't be used here.)
+> Most providers must expose an OpenAI-compatible `/chat/completions` endpoint. (Cursor's API, for example, only lists models and has no public chat-completions endpoint, so it can't be used here.) **xAI Grok (OAuth)** is the exception: it reuses your Grok CLI login and talks to xAI's CLI chat proxy instead of storing an API key.
 
 ---
 
@@ -77,8 +77,8 @@ Existing installs upgrade smoothly:
 1. Launch CodexGateway — a status icon appears in the menu bar.
 2. (Optional) Menu bar → **Open at Login** so the gateway starts automatically after reboot.
 3. Open **Settings** (menu bar → Settings, or ⌘,).
-4. **Install a provider preset** and enter its API key (skipped for keyless providers like Ollama).
-5. Click **Add model** on the provider row and pick the models you want.
+4. **Install a provider preset** and enter its API key (skipped for Ollama and **xAI Grok (OAuth)** — OAuth uses `grok login` / `~/.grok/auth.json`).
+5. Click **Add model** on the provider row and pick the models you want (Grok OAuth seeds a suggested model on install).
 6. Restart Codex when prompted (**Restart Codex**, ⌘R) so Desktop/CLI reload config.
 7. Pick a model in **Codex Desktop** (model picker) or the **Codex CLI** — your custom models are available in both.
 
@@ -90,7 +90,9 @@ Everything lives in the **Settings** window — no browser needed.
 
 ### Providers
 
-Install a built-in preset (**Z.ai, Kimi, Qwen, Xiaomi MiMo, Cline Pass, MiniMax, DeepSeek, xAI, OpenRouter, Ollama**) or add a custom OpenAI-compatible endpoint. You're prompted for an API key when the provider needs one. Provider rows show a compact model count and status.
+Install a built-in preset (**Z.ai, Kimi, Qwen, Xiaomi MiMo, Cline Pass, MiniMax, DeepSeek, xAI Grok (API), xAI Grok (OAuth), OpenRouter, Ollama**) or add a custom OpenAI-compatible endpoint. You're prompted for an API key when the provider needs one. Provider rows show a compact model count and status.
+
+**xAI Grok (API) vs xAI Grok (OAuth):** keep them separate. **xAI Grok (API)** uses an API key against `api.x.ai` and fetches models from that API. **xAI Grok (OAuth)** uses the official Grok CLI session (`npm i -g @xai-official/grok` then `grok login`), forwards through xAI’s CLI chat proxy, and fetches the model list from the CLI OAuth catalog (`/models-v2`) — no key in `providers.json`. Both can be installed side by side.
 
 You can add, edit, and delete providers. A provider can't be removed while it still has installed models — delete its models first.
 
@@ -102,7 +104,8 @@ Display names are auto-formatted into friendly, provider-prefixed names — Clin
 
 | Provider model ID | Shown in Codex as |
 |---|---|
-| `grok-4.3` (xAI) | **xAI Grok 4.3** |
+| `grok-4.5` (xAI API) | **xAI Grok 4.5 (API)** |
+| `grok-4.5` (xAI OAuth) | **xAI Grok 4.5 (OAuth)** |
 | `deepseek/deepseek-chat-v3-0324` (OpenRouter) | **OpenRouter DeepSeek Chat V3 0324** |
 
 Doubled vendor prefixes are collapsed, and any name you edit yourself is preserved.

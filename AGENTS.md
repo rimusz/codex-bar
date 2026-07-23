@@ -34,7 +34,7 @@ When changing gateway or Codex integration:
 Every code change must ship with **updated documentation** and **tests** in the same session — not as a follow-up.
 
 1. **Tests** — run `make test`; add or extend `Tests/CodexGatewayTests/` for new or changed behavior.
-2. **Live verification** — for gateway changes, `make run` then `curl /health`. For Settings / menu bar / Codex Desktop UI changes, verify live with **Computer Use** (`grokbuild-computer-use` MCP, or the `orca computer` CLI fallback) instead of asking the user for screenshots.
+2. **Live verification** — for any Swift/app change: `make run`, `curl /health` when gateway-related, and **always use Computer Use to test changes** (`grokbuild-computer-use` MCP → `orca computer` → `agent-desktop` last). Do not skip Computer Use or ask the user for screenshots instead.
 3. **ARCHITECTURE.md** — update for new services, routes, config paths, or flows.
 4. **README.md** — update for user-visible features or install/requirements changes.
 5. **BUILDING.md** — update for build, release, packaging, or script changes.

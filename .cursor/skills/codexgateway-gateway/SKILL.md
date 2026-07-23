@@ -31,7 +31,7 @@ CodexAppServer.shared          // restart Codex Desktop
 
 See `ARCHITECTURE.md` → Gateway routes. The gateway is **minimal and loopback-only** (`LoopbackHTTPServer.start` pins `requiredLocalEndpoint` to `127.0.0.1`): only `/health`, `/api/restart-codex`, `/v1/models`, `/v1/responses`, `/v1/chat/completions`. There are **no HTTP provider/model mutation endpoints and no browser dashboard** — all management is done in-process by the native Settings UI (`ModelCatalog` / `CodexConfig`).
 
-Provider/model add flow (native, not HTTP): installing a preset writes only the provider endpoint/key; Settings then fetches provider models via `ProviderModelFetcher` before adding selected models. Most providers use `GET {base_url}/models`; Cline Pass uses the public recommended-models feed (`GET https://api.cline.bot/api/v1/ai/cline/recommended-models`, no API key) via `fetchClinePassRecommended` / `parseClinePassRecommended` (same path as GrokBuild Desktop). Fetched lists persist in `~/.codexgateway/fetched_models.json` and are replaced on the next fetch. `ProviderModelFetcher.parse` accepts OpenAI (`data[]`), bare arrays, and an `items[]` shape (flattening to top-level `id`s and ignoring per-model variants). Note: providers must expose an OpenAI-compatible `/chat/completions` endpoint to actually serve models — a `/models`-only API (e.g. Cursor's) can list models but can't complete, so such providers aren't shipped as presets.
+Provider/model add flow (native, not HTTP): installing a preset writes only the provider endpoint/key (Grok OAuth also seeds a suggested model); Settings then fetches provider models via `ProviderModelFetcher` before adding selected models. Most providers use `GET {base_url}/models`; Cline Pass uses the public recommended-models feed (`GET https://api.cline.bot/api/v1/ai/cline/recommended-models`, no API key) via `fetchClinePassRecommended` / `parseClinePassRecommended` (same path as GrokBuild Desktop). Fetched lists persist in `~/.codexgateway/fetched_models.json` and are replaced on the next fetch. `ProviderModelFetcher.parse` accepts OpenAI (`data[]`), bare arrays, and an `items[]` shape (flattening to top-level `id`s and ignoring per-model variants). Note: providers must expose an OpenAI-compatible `/chat/completions` endpoint to actually serve models — a `/models`-only API (e.g. Cursor's) can list models but can't complete, so such providers aren't shipped as presets. **xAI Grok (OAuth)** (`auth_kind: grok_oauth`) is different: credentials come from `~/.grok/auth.json` / `grok login`; `GatewayServer` forwards via `GrokOAuthClient` to `cli-chat-proxy.grok.com/v1/responses`; Settings fetches models from `…/models-v2` (`ProviderModelFetcher.fetchGrokOAuthModels`) — parallel to the **xAI Grok (API)** preset.
 
 ## Config files
 
@@ -39,7 +39,8 @@ Provider/model add flow (native, not HTTP): installing a preset writes only the 
 |------|-----------|
 | `~/.codexgateway/custom_model_catalog.json` | `ModelCatalog` internal routing catalog |
 | `~/.codex/model-catalogs/custom-providers.json` | `ModelCatalog` Codex-compatible picker catalog export; includes native ChatGPT/Codex models plus custom models. **Custom entries only appear in Codex's picker when signed in** (free account suffices); signed out Codex shows a built-in fallback and labels active custom models as "Custom". `SettingsStore.customModelsNeedSignIn` drives a Settings hint. |
-| `~/.codexgateway/providers.json` | `ModelCatalog` |
+| `~/.codexgateway/providers.json` | `ModelCatalog` (`auth_kind` optional: `api_key` / `grok_oauth`) |
+| `~/.grok/auth.json` | Grok CLI OAuth session (read by `GrokOAuthSession` when `auth_kind` is `grok_oauth`) |
 | `~/.codex/config.toml` | `CodexConfig` (managed blocks; provider id `codexgateway`). `requires_openai_auth` follows `CodexConfig.isSignedIn()`: `false` when signed out (no Codex login needed for local-only Ollama/custom), `true` when signed in (native GPT/ChatGPT pass-through). Legacy `codexbar` blocks are rewritten on refresh/patch. |
 | `~/.codex/auth.json` | read-only for pass-through token + `isSignedIn()` detection |
 
@@ -53,13 +54,16 @@ Provider/model add flow (native, not HTTP): installing a preset writes only the 
 Same session, before finishing:
 
 1. **`make test`** — extend `TranslatorTests`, `CodexConfigTests`, or add service tests.
-2. **`ARCHITECTURE.md`** — gateway routes, config paths, service map.
-3. **`README.md`** — if user-visible gateway/config behavior changed.
-4. **This skill** + `codex-gateway-integration.mdc` — if APIs or route contracts changed.
+2. **`make run`** + `curl -s http://127.0.0.1:8765/health`.
+3. **Always use Computer Use to test changes** — open Settings and exercise any provider/model/catalog/path you touched (`grokbuild-computer-use` MCP → `orca computer` → `agent-desktop` last; see `codexgateway-dev` skill). Do not skip.
+4. **`ARCHITECTURE.md`** — gateway routes, config paths, service map.
+5. **`README.md`** — if user-visible gateway/config behavior changed.
+6. **This skill** + `codex-gateway-integration.mdc` — if APIs or route contracts changed.
 
 ## Smoke test
 
 ```bash
 make run
 curl -s http://127.0.0.1:8765/health
+# then Computer Use: open Settings and verify the changed flow
 ```

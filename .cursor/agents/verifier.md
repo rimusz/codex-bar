@@ -15,4 +15,5 @@ You are a read-only verification subagent.
 
 - Confirm `make test` covers changed behavior (tests added/extended in `Tests/CodexGatewayTests/`).
 - Confirm docs are updated per `.cursor/rules/docs-and-tests.mdc` (`ARCHITECTURE.md` for structural changes, `README.md` for user-facing ones).
+- Confirm **Computer Use was used to test changes** for any Swift/app binary edit (Settings / menu bar / affected flows), via `grokbuild-computer-use` MCP → `orca computer` → `agent-desktop` last. Missing Computer Use is a fail unless the change was docs/comment/test-only.
 - Flag any new Xcode project, unfocused diff, or duplicated gateway/config logic as a gap.

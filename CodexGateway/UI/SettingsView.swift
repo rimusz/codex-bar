@@ -214,7 +214,7 @@ struct SettingsView: View {
       }
       .padding(.vertical, 4)
     } footer: {
-      Text("Installing a preset adds only the provider endpoint and key. Add models later from the provider row.")
+      Text("Most presets add only the provider endpoint and key — add models from the provider row. xAI Grok (OAuth) also seeds a suggested model and uses your Grok CLI login instead of an API key.")
     }
   }
 
@@ -282,6 +282,11 @@ struct SettingsView: View {
   }
 
   private func presetFetchCaption(_ preset: ProviderPreset) -> String {
+    if preset.authKind == .grokOAuth {
+      let status = GrokOAuthSession.status()
+      let auth = status.configured ? "Connected" : "Not signed in"
+      return "Grok CLI OAuth · \(auth) · fetches model catalog"
+    }
     if preset.supportsLiveCatalogRefresh {
       return "Fetches live Cline Pass catalog"
     }
@@ -297,6 +302,12 @@ struct SettingsView: View {
   }
 
   private func fetchHelp(for provider: ProviderConfig, highlight: Bool) -> String {
+    if provider.usesGrokOAuth
+      || ProviderPreset.matching(providerID: provider.name)?.supportsGrokOAuthModelCatalog == true {
+      return highlight
+        ? "Fetch models from your Grok CLI OAuth session before adding a model."
+        : "Refresh the Grok CLI OAuth model catalog."
+    }
     if ProviderPreset.matching(providerID: provider.name)?.supportsLiveCatalogRefresh == true {
       return highlight
         ? "Fetch the Cline Pass model list before adding a model (no API key required)."
@@ -418,7 +429,20 @@ struct SettingsView: View {
 
   @ViewBuilder
   private func providerKeyBadge(for provider: ProviderConfig) -> some View {
-    if provider.api_key.isEmpty {
+    if provider.usesGrokOAuth {
+      let status = GrokOAuthSession.status()
+      if status.configured {
+        Label("OAuth", systemImage: "person.badge.key.fill")
+          .font(.caption2)
+          .foregroundStyle(.green)
+          .help("Grok CLI session at \(status.authPath)")
+      } else {
+        Label("Sign in", systemImage: "person.badge.key")
+          .font(.caption2)
+          .foregroundStyle(.orange)
+          .help(status.setupHint ?? "Run `grok login` in Terminal")
+      }
+    } else if provider.api_key.isEmpty {
       Label("No key", systemImage: "key.slash")
         .font(.caption2)
         .foregroundStyle(.secondary)
@@ -503,11 +527,14 @@ struct SettingsView: View {
   // MARK: - Editor sheets
 
   private var providerEditorSheet: some View {
-    VStack(alignment: .leading, spacing: 0) {
+    let isGrokOAuth = editingProvider?.usesGrokOAuth == true
+    return VStack(alignment: .leading, spacing: 0) {
       sheetHeader(
         icon: "server.rack",
         title: editingProvider == nil ? "Add provider" : "Edit provider",
-        subtitle: "OpenAI-compatible endpoint and API key."
+        subtitle: isGrokOAuth
+          ? "Uses the official Grok CLI session (~/.grok/auth.json)."
+          : "OpenAI-compatible endpoint and API key."
       )
 
       Form {
@@ -523,14 +550,23 @@ struct SettingsView: View {
           .foregroundStyle(.secondary)
 
         TextField("Base URL", text: $providerBaseURL)
-        Text("e.g. https://api.minimax.io/v1")
+        Text(isGrokOAuth ? "CLI chat proxy base, e.g. https://cli-chat-proxy.grok.com/v1" : "e.g. https://api.minimax.io/v1")
           .font(.caption)
           .foregroundStyle(.secondary)
 
-        SecureField(
-          editingProvider?.api_key.isEmpty == false ? "API key (leave blank to keep current)" : "API key",
-          text: $providerAPIKey
-        )
+        if isGrokOAuth {
+          let status = GrokOAuthSession.status()
+          Text(status.configured ? "Grok CLI session connected" : (status.setupHint ?? "Not signed in"))
+            .foregroundStyle(status.configured ? AnyShapeStyle(.secondary) : AnyShapeStyle(Color.orange))
+          Text("No API key is stored in providers.json for this provider.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        } else {
+          SecureField(
+            editingProvider?.api_key.isEmpty == false ? "API key (leave blank to keep current)" : "API key",
+            text: $providerAPIKey
+          )
+        }
       }
       .formStyle(.grouped)
 
@@ -688,7 +724,7 @@ struct SettingsView: View {
   // MARK: - Actions
 
   private func installPreset(_ preset: ProviderPreset) {
-    if preset.requiresAPIKeyPrompt {
+    if preset.requiresAPIKeyPrompt || preset.authKind == .grokOAuth {
       presetAPIKey = ""
       installingPreset = preset
     } else {
@@ -713,10 +749,19 @@ struct SettingsView: View {
       )
 
       Form {
-        SecureField("API key", text: $presetAPIKey)
-        Text("Your key is stored locally in ~/.codexgateway/providers.json.")
-          .font(.caption)
-          .foregroundStyle(.secondary)
+        if preset.authKind == .grokOAuth {
+          let status = GrokOAuthSession.status()
+          Text(status.configured ? "Grok CLI session connected." : (status.setupHint ?? "Not signed in"))
+            .foregroundStyle(status.configured ? AnyShapeStyle(.primary) : AnyShapeStyle(Color.orange))
+          Text("Install @xai-official/grok and run `grok login` (or `grok login --oauth`). Credentials stay in ~/.grok/auth.json.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        } else {
+          SecureField("API key", text: $presetAPIKey)
+          Text("Your key is stored locally in ~/.codexgateway/providers.json.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
       }
       .formStyle(.grouped)
 
@@ -725,8 +770,12 @@ struct SettingsView: View {
         Button("Cancel", role: .cancel) { installingPreset = nil }
           .keyboardShortcut(.cancelAction)
         Button("Install") {
-          let key = presetAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
           installingPreset = nil
+          if preset.authKind == .grokOAuth {
+            performInstall(preset, apiKey: "")
+            return
+          }
+          let key = presetAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
           guard !key.isEmpty else {
             store.errorMessage = "An API key is required for \(preset.displayName)."
             return
@@ -902,7 +951,8 @@ struct SettingsView: View {
   }
 
   private func catalogModels(from fetched: [FetchedModel], for provider: ProviderConfig) -> [CatalogModel] {
-    let liveCline = ProviderPreset.matching(providerID: provider.name)?.supportsLiveCatalogRefresh == true
+    let preset = ProviderPreset.matching(providerID: provider.name)
+    let liveCline = preset?.supportsLiveCatalogRefresh == true
     return fetched.map { fetchedModel in
       let displayName: String
       if liveCline {
@@ -910,6 +960,7 @@ struct SettingsView: View {
         let base = (label?.isEmpty == false ? label! : ClinePassCatalog.displayLabel(for: fetchedModel.id))
         displayName = ClinePassCatalog.displayName(for: base)
       } else {
+        // Includes xAI API / Grok OAuth `(API)` / `(OAuth)` suffixes via prettyDisplayName.
         displayName = ModelCatalog.prettyDisplayName(from: fetchedModel.id, providerID: provider.name)
       }
       return CatalogModel(

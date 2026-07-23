@@ -78,6 +78,9 @@ codex-bar/                        # GitHub repo name (unchanged)
 │   │   ├── LoopbackHTTPServer.swift
 │   │   ├── Translator.swift      # Responses ↔ Chat translation
 │   │   ├── ModelCatalog.swift    # custom_model_catalog.json + providers
+│   │   ├── ProviderPresets.swift # Built-in presets (incl. xAI API + Grok OAuth)
+│   │   ├── GrokOAuthSession.swift # ~/.grok/auth.json + `grok models` refresh
+│   │   ├── GrokOAuthClient.swift  # CLI chat proxy (Responses) forwarder
 │   │   ├── ProviderModelFetcher.swift # OpenAI /models + Cline Pass recommended-models
 │   │   ├── FetchedModelsStore.swift   # ~/.codexgateway/fetched_models.json cache
 │   │   ├── ZstdBridge.swift         # zstd decompress for Codex request bodies
@@ -160,9 +163,10 @@ Install helper: `scripts/codexgateway-install-update.sh` → bundled as `Content
 
 | Path | Purpose |
 |------|---------|
-| `~/.codexgateway/custom_model_catalog.json` | CodexGateway internal model catalog (routing metadata). Raw model ids get friendly display names via `ModelCatalog.prettyDisplayName` / `normalizeDisplayNames` (run on Settings reload + gateway startup; drops `vendor/model` prefixes, collapses doubled vendors, title-cases, and prefixes the provider brand Cline-style via `providerBrand`, e.g. "xAI Grok 4.3"); user-edited names are preserved. |
+| `~/.codexgateway/custom_model_catalog.json` | CodexGateway internal model catalog (routing metadata). Raw model ids get friendly display names via `ModelCatalog.prettyDisplayName` / `normalizeDisplayNames` (run on Settings reload + gateway startup; drops `vendor/model` prefixes, collapses doubled vendors, title-cases, prefixes the provider brand Cline-style via `providerBrand`, and appends `(API)` / `(OAuth)` for xAI vs Grok OAuth, e.g. "xAI Grok 4.5 (API)"); user-edited names are preserved. `ProviderConfig.displayLabel` prefers a stored `display_name` over the built-in preset title. Providers and models are listed A–Z by display name in Settings; custom Codex picker entries are exported in that order. |
 | `~/.codex/model-catalogs/custom-providers.json` | Codex-compatible picker export (`model_catalog_json`): native ChatGPT/Codex models plus custom entries. **Codex only renders custom entries in its picker when signed in** (free account is enough); signed out it shows a built-in fallback list and labels any active custom model as "Custom". Settings surfaces a sign-in hint (`SettingsStore.customModelsNeedSignIn`) when custom models exist but `auth.json` is absent. |
-| `~/.codexgateway/providers.json` | Provider endpoints + credentials. Read **live** by the gateway per request (`ModelCatalog.resolveUpstream`), so provider/preset changes take effect immediately — **no Codex restart** (only model changes require one; see `SettingsStore.requiresCodexRestart`). |
+| `~/.codexgateway/providers.json` | Provider endpoints + credentials. Optional `auth_kind`: omitted/`api_key` → Bearer key to `{base_url}/chat/completions`; `grok_oauth` → `GrokOAuthClient` (no key stored). Read **live** by the gateway per request (`ModelCatalog.resolveUpstream`), so provider/preset changes take effect immediately — **no Codex restart** (only model changes require one; see `SettingsStore.requiresCodexRestart`). |
+| `~/.grok/auth.json` | Official Grok CLI OAuth session (not owned by CodexGateway). Used when a provider has `auth_kind = grok_oauth`. |
 | `~/.codexgateway/fetched_models.json` | Cached model lists per provider (OpenAI `/models`, or Cline Pass recommended-models feed); replaced on each fetch |
 | `~/.codex/config.toml` | Codex config (managed blocks patched). `[model_providers.codexgateway].requires_openai_auth` is set from sign-in state: `false` when not signed in (skips Codex login — enables local-only Ollama/custom use), `true` when signed in (native GPT/ChatGPT pass-through). Legacy `codexbar` blocks are rewritten to `codexgateway` on refresh/patch. Automatic callers (startup, `CodexAuthWatcher`, restart) only **refresh** the block when it is already present (`refreshManagedConfigIfApplied`) — CodexGateway never silently injects into a fresh/native Codex; Settings' **Update Gateway Config** is the explicit opt-in. |
 | `~/.codex/auth.json` | Auth token for pass-through; also read by `CodexConfig.isSignedIn()` to decide `requires_openai_auth`; watched by `CodexAuthWatcher` |
@@ -201,7 +205,8 @@ Release assets: `CodexGateway-{tag}.app.zip`, legacy `CodexBar-{tag}.app.zip`, `
 | Add gateway route | `GatewayServer.swift` |
 | Change translation logic | `Translator.swift` |
 | Model catalog / providers | `ModelCatalog.swift`, `ProviderPresets.swift`, `ProviderModelFetcher.swift`, `Paths.swift` |
-| Install provider preset | `PresetInstaller`, Settings window (provider only; models fetched/added separately). Cline Pass listing: `ProviderModelFetcher.fetchClinePassRecommended` → `https://api.cline.bot/api/v1/ai/cline/recommended-models` (no API key) |
+| Install provider preset | `PresetInstaller`, Settings window (provider only by default; **xAI Grok (OAuth)** also seeds a suggested model). Cline Pass listing: `ProviderModelFetcher.fetchClinePassRecommended` → `https://api.cline.bot/api/v1/ai/cline/recommended-models` (no API key) |
+| xAI Grok (OAuth) provider | `GrokOAuthSession` (`~/.grok/auth.json`, `grok models` refresh), `GrokOAuthClient` → `cli-chat-proxy.grok.com/v1/responses`; model list via `ProviderModelFetcher.fetchGrokOAuthModels` → `…/models-v2`. `GatewayServer` branches on `ProviderConfig.usesGrokOAuth`. Parallel to **xAI Grok (API)** preset. |
 | Open Settings | `SettingsWindowController`, menu **Settings** (⌘,) |
 | Patch Codex config | `CodexConfig.swift` |
 | Reset/Update gateway config | `SettingsView` (label toggles on `SettingsStore.gatewayConfigInSync`), `SettingsStore.resetGatewayConfig` / `updateGatewayConfig`, `CodexConfig.resetToNative` (Codex-side only; keeps `~/.codexgateway` data) |
@@ -224,6 +229,9 @@ Unit tests in `Tests/CodexGatewayTests/`:
 - `TranslatorTests` — translation, namespace mapping, think stripping
 - `CodexConfigTests` — managed block stripping
 - `ModelCatalogTests` — provider/model API parsing
+- `ProviderPresetsTests` — preset definitions, Grok OAuth install seed
+- `GrokOAuthSessionTests` — auth.json probe/parse/refresh stubs
+- `GrokOAuthClientTests` — Chat→Responses map, SSE→Chat conversion, 401 retry
 - `StatusBarTests` — accessibility labels
 - `OpenAtLoginTests` — login-item status mapping + toggle flow
 - `UpdateCheckerTests` — version compare, notarized filter, asset selection
