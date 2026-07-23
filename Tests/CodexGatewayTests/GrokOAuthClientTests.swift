@@ -124,4 +124,17 @@ final class GrokOAuthClientTests: XCTestCase {
     XCTAssertEqual(headers["x-grok-client-version"], "1.2.3")
     XCTAssertTrue(headers["User-Agent"]?.contains("grok-shell/1.2.3") == true)
   }
+
+  func testWaitTimeoutSecondsUsesRequestTimeoutPlusGrace() {
+    var request = URLRequest(url: URL(string: "https://example.com")!)
+    request.timeoutInterval = 30
+    XCTAssertEqual(GrokOAuthClient.waitTimeoutSeconds(for: request), 31)
+
+    var unset = URLRequest(url: URL(string: "https://example.com")!)
+    unset.timeoutInterval = 0
+    XCTAssertEqual(
+      GrokOAuthClient.waitTimeoutSeconds(for: unset),
+      GrokOAuthClient.defaultRequestTimeout + 1
+    )
+  }
 }

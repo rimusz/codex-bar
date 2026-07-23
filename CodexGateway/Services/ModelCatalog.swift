@@ -94,12 +94,11 @@ struct ProviderConfig: Codable {
   var auth_kind: String? = nil
 
   var displayLabel: String {
-    // Built-in presets always use the current preset title (e.g. "xAI Grok (API)").
+    let stored = (display_name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    if !stored.isEmpty { return stored }
     if let preset = ProviderPreset.matching(providerID: name) {
       return preset.displayName
     }
-    let stored = (display_name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-    if !stored.isEmpty { return stored }
     return name
   }
 }

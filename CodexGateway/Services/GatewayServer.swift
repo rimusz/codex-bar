@@ -209,6 +209,9 @@ final class GatewayServer {
         case .upstream(let status, let detail):
           GatewayLog.error("Grok OAuth upstream \(requestedModel) status=\(status) preview=\(detail)")
           self.json(response, GatewayServer.upstreamErrorPayload(status: status, bodyPreview: detail), status: status >= 400 ? status : 502)
+        case .transport(let message):
+          GatewayLog.error("Grok OAuth transport failed for \(requestedModel): \(message)")
+          self.json(response, ["error": message], status: 504)
         }
       } catch {
         GatewayLog.error("Grok OAuth failed for \(requestedModel): \(error.localizedDescription)")
@@ -366,6 +369,8 @@ final class GatewayServer {
               ], status: 401)
             case .upstream(let status, let detail):
               self.json(response, GatewayServer.upstreamErrorPayload(status: status, bodyPreview: detail), status: status >= 400 ? status : 502)
+            case .transport(let message):
+              self.json(response, ["error": message], status: 504)
             }
           } catch {
             self.json(response, ["error": error.localizedDescription], status: 502)

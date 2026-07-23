@@ -176,7 +176,7 @@ enum GrokOAuthSession {
     do {
       try refreshFn()
     } catch {
-      if !force && !isHardExpired(initial, now: Date()) {
+      if !force && !isHardExpired(initial, now: now) {
         return initial.accessToken
       }
       throw SessionError.refreshFailed
@@ -186,7 +186,7 @@ enum GrokOAuthSession {
       throw SessionError.refreshFailed
     }
     if refreshed.accessToken == initial.accessToken {
-      if !force && !isHardExpired(refreshed, now: Date()) {
+      if !force && !isHardExpired(refreshed, now: now) {
         return refreshed.accessToken
       }
       throw SessionError.refreshFailed

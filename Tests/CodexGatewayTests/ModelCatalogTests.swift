@@ -38,6 +38,18 @@ final class ModelCatalogTests: XCTestCase {
         XCTAssertEqual(provider.displayLabel, "Cline Pass")
     }
 
+    func testProviderDisplayLabelPrefersStoredNameOverPreset() {
+        let provider = ProviderConfig(
+            name: "xai",
+            display_name: "My xAI",
+            base_url: "https://api.x.ai/v1",
+            api_key: "k",
+            vision_model: nil
+        )
+        XCTAssertEqual(provider.displayLabel, "My xAI")
+        XCTAssertEqual(ProviderPreset.matching(providerID: "xai")?.displayName, "xAI Grok (API)")
+    }
+
     func testCatalogModelParsingDefaults() {
         let model = ModelCatalog.catalogModel(from: [
             "slug": "minimax/m2.5",

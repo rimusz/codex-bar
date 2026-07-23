@@ -8,14 +8,29 @@ enum GrokOAuthClient {
   enum ClientError: LocalizedError {
     case auth(String)
     case upstream(status: Int, detail: String)
+    case transport(String)
 
     var errorDescription: String? {
       switch self {
       case .auth(let message): return message
       case .upstream(let status, let detail):
         return "Grok OAuth proxy error (HTTP \(status)): \(detail)"
+      case .transport(let message): return message
       }
     }
+  }
+
+  /// Default HTTP timeout for CLI-proxy requests (seconds).
+  static let defaultRequestTimeout: TimeInterval = 120
+
+  /// Seconds to wait on the sync semaphore: request timeout + 1s grace.
+  static func waitTimeoutSeconds(
+    for request: URLRequest,
+    fallback: TimeInterval = defaultRequestTimeout
+  ) -> TimeInterval {
+    let configured = request.timeoutInterval
+    let base = configured > 0 ? configured : fallback
+    return base + 1
   }
 
   /// Chat Completions → Responses body for `cli-chat-proxy` (no hosted search tools).
@@ -167,6 +182,7 @@ enum GrokOAuthClient {
     func makeRequest(token: String) -> URLRequest {
       var request = URLRequest(url: responsesURL(baseURL: baseURL))
       request.httpMethod = "POST"
+      request.timeoutInterval = defaultRequestTimeout
       request.httpBody = bodyData
       for (key, value) in upstreamHeaders(accessToken: token, model: model) {
         request.setValue(value, forHTTPHeaderField: key)
@@ -354,11 +370,16 @@ enum GrokOAuthClient {
   // MARK: - Internals
 
   private static func performSync(_ request: URLRequest) throws -> (status: Int, data: Data) {
+    var request = request
+    if request.timeoutInterval <= 0 {
+      request.timeoutInterval = defaultRequestTimeout
+    }
+
     let semaphore = DispatchSemaphore(value: 0)
     var resultStatus = 0
     var resultData = Data()
     var resultError: Error?
-    URLSession.shared.dataTask(with: request) { data, response, error in
+    let task = URLSession.shared.dataTask(with: request) { data, response, error in
       defer { semaphore.signal() }
       if let error {
         resultError = error
@@ -366,8 +387,14 @@ enum GrokOAuthClient {
       }
       resultStatus = (response as? HTTPURLResponse)?.statusCode ?? 0
       resultData = data ?? Data()
-    }.resume()
-    semaphore.wait()
+    }
+    task.resume()
+
+    let timeout = DispatchTime.now() + waitTimeoutSeconds(for: request)
+    if semaphore.wait(timeout: timeout) == .timedOut {
+      task.cancel()
+      throw ClientError.transport("Grok OAuth request timed out.")
+    }
     if let resultError { throw resultError }
     return (resultStatus, resultData)
   }

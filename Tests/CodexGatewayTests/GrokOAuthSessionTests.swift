@@ -101,6 +101,40 @@ final class GrokOAuthSessionTests: XCTestCase {
     XCTAssertEqual(refreshCount, 0)
   }
 
+  func testEnsureFreshAccessTokenUsesInjectedNowOnRefreshFailure() throws {
+    let auth = authURL()
+    // Soft-expired relative to `now` (within refresh threshold) but not hard-expired.
+    let now = Date(timeIntervalSince1970: 1_000_000)
+    let softExpiry = now.addingTimeInterval(30).timeIntervalSince1970
+    try Data(#"{"https://auth.x.ai::a":{"key":"soft","expires_at":\#(softExpiry)}}"#.utf8).write(to: auth)
+
+    let token = try GrokOAuthSession.ensureFreshAccessToken(
+      at: auth,
+      now: now,
+      refresh: { throw NSError(domain: "test", code: 1) }
+    )
+    XCTAssertEqual(token, "soft")
+  }
+
+  func testEnsureFreshAccessTokenThrowsWhenHardExpiredAndRefreshFails() throws {
+    let auth = authURL()
+    let now = Date(timeIntervalSince1970: 2_000_000)
+    let past = now.addingTimeInterval(-60).timeIntervalSince1970
+    try Data(#"{"https://auth.x.ai::a":{"key":"dead","expires_at":\#(past)}}"#.utf8).write(to: auth)
+
+    XCTAssertThrowsError(
+      try GrokOAuthSession.ensureFreshAccessToken(
+        at: auth,
+        now: now,
+        refresh: { throw NSError(domain: "test", code: 1) }
+      )
+    ) { error in
+      guard case GrokOAuthSession.SessionError.refreshFailed = error else {
+        return XCTFail("Expected refreshFailed, got \(error)")
+      }
+    }
+  }
+
   func testStatusNotConfiguredWhenMissing() {
     let status = GrokOAuthSession.status(at: authURL())
     XCTAssertFalse(status.configured)
