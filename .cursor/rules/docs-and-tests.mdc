@@ -15,26 +15,31 @@ Any **code change** — new features, behavior changes, bug fixes, refactors tha
 4. Test pure logic (translation, config stripping, catalog parsing) without requiring a live Codex Desktop process when possible.
 5. Skip new tests only when the change is docs-only or a trivial comment/format with zero behavior change.
 
-### Live verification (gateway / menu bar)
+### Live verification (always for app code)
 
-For **gateway or menu bar changes**, `make test` is not always enough — also smoke-test the running app:
+For any **Swift / app binary** change, `make test` alone is not enough:
 
 1. Rebuild and relaunch: `make run` (packaging + relaunch — `make build` alone does **not** refresh the running `.app`).
-2. Confirm gateway: `curl -s http://127.0.0.1:8765/health` returns `{"status":"ok",...}`.
-3. For menu bar changes: confirm the status icon and menu items behave as expected.
+2. Confirm gateway when relevant: `curl -s http://127.0.0.1:8765/health` returns `{"status":"ok",...}`.
+3. **Always use Computer Use to test changes** in the same session (Settings, menu bar, provider/model flows, and Codex Desktop effects). Do not skip; do not ask the user for screenshots instead.
 
-### Computer Use (test UI / Codex Desktop changes)
+Exempt: docs-only, comments, or pure test-only edits with zero app binary change.
 
-Use **Computer Use** to verify anything that shows in the CodexGateway Settings window, menu bar, or Codex Desktop itself (model picker, sign-in flow, config effects). Prefer it over asking the user for screenshots.
+### Computer Use (required)
+
+Always use Computer Use to test changes. Prefer it over asking the user for screenshots.
 
 Tooling, in order of preference:
 
-1. **`grokbuild-computer-use` MCP** (primary) — check the MCP first. Key tools: `computer_list_apps`, `computer_screenshot` (captures via **agent-desktop**), `computer_snapshot` (a11y tree + refs), `computer_click`/`computer_type`/`computer_press`, `computer_wait`. Read a tool's JSON schema before calling.
+1. **`grokbuild-computer-use` MCP** (primary) — check the MCP first. Key tools: `computer_list_apps`, `computer_screenshot`, `computer_snapshot` (a11y tree + refs), `computer_click`/`computer_type`/`computer_press`, `computer_wait`. Read a tool's JSON schema before calling.
 2. **`orca computer …` CLI** (fallback) — e.g. `orca computer list-apps --json`, `get-app-state`, `click`. Requires the Orca app running first (`orca status --json`; otherwise returns `runtime_unavailable`).
-3. Both ultimately drive **agent-desktop**; if screenshots fail, check `computer_permissions` / `orca computer permissions` (Screen Recording, Accessibility).
+3. **`agent-desktop` CLI** (last fallback) — direct desktop automation when the MCP and Orca are unavailable. Start with `agent-desktop skills get desktop --full`. Typical: `agent-desktop snapshot --app CodexGateway`, `click --ref @…`, `screenshot --app CodexGateway`. Check permissions with `agent-desktop` / Screen Recording + Accessibility if actions fail.
+
+The MCP and `orca computer` both sit on top of **agent-desktop**; use the CLI directly only when those layers fail.
 
 Practical notes for this repo:
 
+- Open Settings via the CodexGateway status-item menu (process menu bar 2 → **Settings**) when the app is `.accessory`.
 - Codex Desktop bundle id is `com.openai.codex`; restart it to reload config with `osascript -e 'tell application "Codex" to quit'` then `open -a Codex`.
 - Codex's **chat view is a GPU/canvas Electron surface** and does **not** expose an accessibility tree to `computer_snapshot` — use `computer_screenshot` for visual checks there. Native/onboarding screens do expose the tree.
 - There is no coordinate-click in the MCP; drive UI via snapshot `@refs`. Avoid `System Events` "click at" — it blocks on the Accessibility permission gate.
@@ -58,8 +63,9 @@ Practical notes for this repo:
 
 - [ ] Code compiles (`make build` or `swift build`)
 - [ ] `make test` passes
-- [ ] Gateway/menu bar changes smoke-tested (`make run`, then `curl /health` or manual menu check)
-- [ ] UI / Codex Desktop changes verified with Computer Use (`grokbuild-computer-use` MCP, or `orca computer` fallback)
+- [ ] App relaunched with `make run` (when Swift/app binary changed)
+- [ ] Gateway smoke when relevant (`curl /health`)
+- [ ] **Computer Use used to test the change** (`grokbuild-computer-use` MCP → `orca computer` → `agent-desktop` last) — required for every app code change
 - [ ] Relevant docs updated (at minimum `ARCHITECTURE.md` for non-trivial app changes)
 - [ ] User-facing changes reflected in `README.md` when applicable
 

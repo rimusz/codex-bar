@@ -10,6 +10,7 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
   case minimax
   case deepseek
   case xai
+  case grokOAuth
   case openrouter
   case ollama
 
@@ -24,7 +25,8 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
     case .clinePass: return "Cline Pass"
     case .minimax: return "MiniMax"
     case .deepseek: return "DeepSeek"
-    case .xai: return "xAI (Grok)"
+    case .xai: return "xAI Grok (API)"
+    case .grokOAuth: return "xAI Grok (OAuth)"
     case .openrouter: return "OpenRouter"
     case .ollama: return "Ollama (local)"
     }
@@ -40,6 +42,7 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
     case .minimax: return "minimax"
     case .deepseek: return "deepseek"
     case .xai: return "xai"
+    case .grokOAuth: return "grok-oauth"
     case .openrouter: return "openrouter"
     case .ollama: return "ollama"
     }
@@ -55,6 +58,7 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
     case .minimax: return "https://api.minimax.io/v1"
     case .deepseek: return "https://api.deepseek.com"
     case .xai: return "https://api.x.ai/v1"
+    case .grokOAuth: return GrokOAuthClient.defaultBaseURL
     case .openrouter: return "https://openrouter.ai/api/v1"
     case .ollama: return "http://localhost:11434/v1"
     }
@@ -63,14 +67,30 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
   var defaultAPIKey: String {
     switch self {
     case .ollama: return "ollama"
+    case .grokOAuth: return ""
     default: return ""
     }
   }
 
   var requiresAPIKeyPrompt: Bool {
     switch self {
-    case .ollama: return false
+    case .ollama, .grokOAuth: return false
     default: return true
+    }
+  }
+
+  var authKind: ProviderAuthKind {
+    switch self {
+    case .grokOAuth: return .grokOAuth
+    default: return .apiKey
+    }
+  }
+
+  /// When true, install also upserts `catalogModels()` (no live `/models` fetch).
+  var seedsSuggestedModelOnInstall: Bool {
+    switch self {
+    case .grokOAuth: return true
+    default: return false
     }
   }
 
@@ -83,16 +103,17 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
     case .minimax: return "minimax-m2.5"
     case .deepseek: return "deepseek-v4-pro"
     case .xai: return "grok-4"
+    case .grokOAuth: return "grok-4.5"
     case .openrouter: return "openrouter/auto"
     case .ollama: return "llama3.2"
     case .clinePass: return "cline-pass/glm-5.2"
     }
   }
 
-  /// Whether CodexGateway can discover models via `GET {base_url}/models`.
+  /// Whether CodexGateway can discover models via `GET {base_url}/models` with the provider API key.
   var supportsModelListingFetch: Bool {
     switch self {
-    case .clinePass:
+    case .clinePass, .grokOAuth:
       return false
     default:
       return true
@@ -107,9 +128,17 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
     }
   }
 
-  /// True when the provider exposes a fetchable model list (OpenAI `/models` or live catalog).
+  /// Whether models come from the Grok CLI OAuth catalog (`GET …/models-v2` with `~/.grok` session).
+  var supportsGrokOAuthModelCatalog: Bool {
+    switch self {
+    case .grokOAuth: return true
+    default: return false
+    }
+  }
+
+  /// True when the provider exposes a fetchable model list (OpenAI `/models`, Cline feed, or Grok OAuth catalog).
   var canFetchModels: Bool {
-    supportsModelListingFetch || supportsLiveCatalogRefresh
+    supportsModelListingFetch || supportsLiveCatalogRefresh || supportsGrokOAuthModelCatalog
   }
 
   /// Static catalog fallback (no live fetch). Unused while every preset either fetches or has a suggested seed.
@@ -131,7 +160,8 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
       display_name: displayName,
       base_url: baseURL,
       api_key: key.isEmpty ? defaultAPIKey : key,
-      vision_model: nil
+      vision_model: nil,
+      auth_kind: authKind.rawValue
     )
   }
 
@@ -160,7 +190,8 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
     case .xiaomiMiMo: return "Xiaomi MiMo V2.5 Pro"
     case .minimax: return "MiniMax M2.5"
     case .deepseek: return "DeepSeek V4 Pro"
-    case .xai: return "xAI Grok 4"
+    case .xai: return "xAI Grok 4 (API)"
+    case .grokOAuth: return "xAI Grok 4.5 (OAuth)"
     case .openrouter: return "OpenRouter Auto"
     case .ollama: return "Ollama Llama 3.2"
     case .clinePass:
@@ -183,10 +214,12 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
     allCases.first { $0.providerID == providerID }
   }
 
-  /// Presets shown first in the menu bar (user-requested providers).
-  static let featuredMenuOrder: [ProviderPreset] = [
-    .zai, .kimi, .qwen, .xiaomiMiMo, .clinePass, .minimax, .deepseek, .xai, .openrouter, .ollama
-  ]
+  /// Presets shown in Settings, sorted A–Z by display name.
+  static var featuredMenuOrder: [ProviderPreset] {
+    allCases.sorted {
+      $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
+    }
+  }
 }
 
 /// Helpers for Cline Pass model listing (live feed + display labels).
@@ -243,10 +276,18 @@ enum PresetInstaller {
     _ preset: ProviderPreset,
     apiKey: String = "",
     upsertProvider: (ProviderConfig) throws -> Void = { try ModelCatalog.shared.upsertProvider($0) },
+    upsertModel: (CatalogModel) throws -> Void = { try ModelCatalog.shared.upsertModel($0) },
     patchConfig: () -> Void = { CodexConfig.patchCodexConfig() }
   ) throws -> (provider: String, models: [String]) {
     try upsertProvider(preset.providerConfig(apiKey: apiKey))
+    var seeded: [String] = []
+    if preset.seedsSuggestedModelOnInstall {
+      for model in preset.catalogModels() {
+        try upsertModel(model)
+        seeded.append(model.slug)
+      }
+    }
     patchConfig()
-    return (preset.providerID, [])
+    return (preset.providerID, seeded)
   }
 }

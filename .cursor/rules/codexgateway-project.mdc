@@ -40,6 +40,7 @@ SwiftPM macOS menu-bar app with embedded gateway for Codex Desktop.
 - Do not add an Xcode project; stay on SwiftPM + Makefile scripts.
 - Menu bar icon: `CodexGateway/Resources/Assets.xcassets/MenuBarIcon.imageset/`.
 - **Docs + tests required** with every code change — see `.cursor/rules/docs-and-tests.mdc`.
+- **Always use Computer Use to test changes** after Swift/app edits (`make run` + `grokbuild-computer-use` MCP → `orca computer` → `agent-desktop` last) — see `.cursor/skills/codexgateway-dev/SKILL.md`.
 - Only commit when the user explicitly asks.
 
 ## Key docs

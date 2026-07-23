@@ -26,7 +26,7 @@ final class SettingsStore: ObservableObject {
   @Published private(set) var codexSignedIn = true
 
   var usableProviders: [ProviderConfig] {
-    providers.filter { !$0.name.isEmpty }
+    ModelCatalog.sortedProviders(providers.filter { !$0.name.isEmpty })
   }
 
   /// True when CodexGateway has custom (non-OpenAI) models but Codex is signed out, so
@@ -50,8 +50,8 @@ final class SettingsStore: ObservableObject {
 
   func reload() {
     ModelCatalog.shared.normalizeDisplayNames()
-    providers = ModelCatalog.shared.loadProviders().providers
-    models = ModelCatalog.shared.loadCatalog().models
+    providers = ModelCatalog.sortedProviders(ModelCatalog.shared.loadProviders().providers)
+    models = ModelCatalog.sortedCatalogModels(ModelCatalog.shared.loadCatalog().models)
     fetchedModels = FetchedModelsStore.shared.load()
     codexSignedIn = CodexConfig.isSignedIn()
     gatewayConfigInSync = SettingsStore.gatewayInSync(
@@ -95,13 +95,15 @@ final class SettingsStore: ObservableObject {
       throw SettingsError.validation("Name and base URL are required.")
     }
 
+    let existing = providers.first { $0.name == trimmedName }
     try ModelCatalog.shared.upsertProvider(
       ProviderConfig(
         name: trimmedName,
         display_name: trimmedDisplayName.isEmpty ? nil : trimmedDisplayName,
         base_url: trimmedURL,
         api_key: apiKey,
-        vision_model: nil
+        vision_model: existing?.vision_model,
+        auth_kind: existing?.auth_kind
       )
     )
     CodexConfig.patchCodexConfig()
@@ -181,11 +183,33 @@ final class SettingsStore: ObservableObject {
   }
 
   func installPreset(_ preset: ProviderPreset, apiKey: String) throws {
-    _ = try PresetInstaller.install(preset, apiKey: apiKey)
+    let result = try PresetInstaller.install(preset, apiKey: apiKey)
     reload()
-    // A preset installs only the provider endpoint/key — no Codex restart needed.
+    if preset.authKind == .grokOAuth {
+      let status = GrokOAuthSession.status()
+      let sessionNote = status.configured
+        ? "Grok CLI session connected."
+        : (status.setupHint ?? "Run `grok login` in Terminal.")
+      if result.models.isEmpty {
+        statusMessage = "Installed \(preset.displayName). \(sessionNote) Add models from the provider row."
+      } else {
+        announce(
+          "Installed \(preset.displayName) with \(result.models.count) model. \(sessionNote)",
+          change: .model
+        )
+      }
+      return
+    }
+    // Default presets install only the provider endpoint/key — no Codex restart needed.
     // Adding models from the provider row is what flags a restart.
-    statusMessage = "Installed \(preset.displayName) provider. Add models from the provider row."
+    if result.models.isEmpty {
+      statusMessage = "Installed \(preset.displayName) provider. Add models from the provider row."
+    } else {
+      announce(
+        "Installed \(preset.displayName) with \(result.models.count) model\(result.models.count == 1 ? "" : "s").",
+        change: .model
+      )
+    }
   }
 
   /// Restarts Codex Desktop so it reloads the updated provider/model catalog.

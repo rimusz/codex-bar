@@ -45,12 +45,33 @@ final class ProviderPresetsTests: XCTestCase {
 
     func testXaiPresetDefinition() {
         let preset = ProviderPreset.xai
-        XCTAssertEqual(preset.displayName, "xAI (Grok)")
+        XCTAssertEqual(preset.displayName, "xAI Grok (API)")
         XCTAssertEqual(preset.providerID, "xai")
         XCTAssertEqual(preset.baseURL, "https://api.x.ai/v1")
         XCTAssertEqual(preset.suggestedModel, "grok-4")
         XCTAssertTrue(preset.requiresAPIKeyPrompt)
         XCTAssertTrue(preset.supportsModelListingFetch)
+        XCTAssertEqual(preset.authKind, .apiKey)
+    }
+
+    func testGrokOAuthPresetDefinition() {
+        let preset = ProviderPreset.grokOAuth
+        XCTAssertEqual(preset.displayName, "xAI Grok (OAuth)")
+        XCTAssertEqual(preset.providerID, "grok-oauth")
+        XCTAssertEqual(preset.baseURL, "https://cli-chat-proxy.grok.com/v1")
+        XCTAssertEqual(preset.suggestedModel, "grok-4.5")
+        XCTAssertFalse(preset.requiresAPIKeyPrompt)
+        XCTAssertFalse(preset.supportsModelListingFetch)
+        XCTAssertTrue(preset.supportsGrokOAuthModelCatalog)
+        XCTAssertTrue(preset.canFetchModels)
+        XCTAssertTrue(preset.seedsSuggestedModelOnInstall)
+        XCTAssertEqual(preset.authKind, .grokOAuth)
+        let config = preset.providerConfig(apiKey: "")
+        XCTAssertEqual(config.auth_kind, "grok_oauth")
+        XCTAssertEqual(config.api_key, "")
+        let models = preset.catalogModels()
+        XCTAssertEqual(models.first?.slug, "grok-oauth/grok-4.5")
+        XCTAssertEqual(models.first?.display_name, "xAI Grok 4.5 (OAuth)")
     }
 
     func testOpenRouterPresetDefinition() {
@@ -78,7 +99,17 @@ final class ProviderPresetsTests: XCTestCase {
         XCTAssertTrue(ids.contains("xiaomiMiMo"))
         XCTAssertTrue(ids.contains("clinePass"))
         XCTAssertTrue(ids.contains("xai"))
+        XCTAssertTrue(ids.contains("grokOAuth"))
         XCTAssertTrue(ids.contains("openrouter"))
+    }
+
+    func testFeaturedMenuIsAlphabeticalByDisplayName() {
+        let names = ProviderPreset.featuredMenuOrder.map(\.displayName)
+        XCTAssertEqual(names, names.sorted {
+            $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
+        })
+        XCTAssertTrue(names.firstIndex(of: "Cline Pass")! < names.firstIndex(of: "xAI Grok (API)")!)
+        XCTAssertTrue(names.firstIndex(of: "xAI Grok (API)")! < names.firstIndex(of: "xAI Grok (OAuth)")!)
     }
 
     func testOllamaDoesNotRequireAPIKeyPrompt() {
@@ -103,6 +134,45 @@ final class ProviderPresetsTests: XCTestCase {
         XCTAssertEqual(savedProvider?.display_name, "MiniMax")
         XCTAssertEqual(savedProvider?.api_key, "sk-test")
         XCTAssertTrue(didPatchConfig)
+    }
+
+    func testGrokOAuthInstallSeedsSuggestedModel() throws {
+        var savedProvider: ProviderConfig?
+        var savedModels: [CatalogModel] = []
+
+        let result = try PresetInstaller.install(
+            .grokOAuth,
+            upsertProvider: { savedProvider = $0 },
+            upsertModel: { savedModels.append($0) },
+            patchConfig: {}
+        )
+
+        XCTAssertEqual(result.provider, "grok-oauth")
+        XCTAssertEqual(result.models, ["grok-oauth/grok-4.5"])
+        XCTAssertEqual(savedProvider?.auth_kind, "grok_oauth")
+        XCTAssertEqual(savedModels.first?.model, "grok-4.5")
+    }
+
+    func testProviderConfigUsesGrokOAuthFlag() {
+        let oauth = ProviderConfig(
+            name: "grok-oauth",
+            display_name: "xAI Grok (OAuth)",
+            base_url: GrokOAuthClient.defaultBaseURL,
+            api_key: "",
+            vision_model: nil,
+            auth_kind: "grok_oauth"
+        )
+        XCTAssertTrue(oauth.usesGrokOAuth)
+        let api = ProviderConfig(
+            name: "xai",
+            display_name: nil,
+            base_url: "https://api.x.ai/v1",
+            api_key: "k",
+            vision_model: nil,
+            auth_kind: nil
+        )
+        XCTAssertFalse(api.usesGrokOAuth)
+        XCTAssertEqual(api.resolvedAuthKind, .apiKey)
     }
 
     func testPresetMatchingUsesProviderID() {

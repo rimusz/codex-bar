@@ -116,6 +116,19 @@ final class GatewayServer {
     let namespaceMap = Translator.extractNamespaceMap(tools: body["tools"] as? [[String: Any]])
     let chatBody = Translator.responsesToChat(body: body, upstreamModel: upstreamModel, sessionId: sessionId)
     let stream = chatBody["stream"] as? Bool ?? true
+
+    if provider.usesGrokOAuth {
+      handleGrokOAuthResponses(
+        chatBody: chatBody,
+        requestedModel: requestedModel,
+        provider: provider,
+        namespaceMap: namespaceMap,
+        stream: stream,
+        response: response
+      )
+      return
+    }
+
     let url = URL(string: "\(provider.base_url.trimmingCharacters(in: CharacterSet(charactersIn: "/")))/chat/completions")!
 
     var urlRequest = URLRequest(url: url)
@@ -147,6 +160,92 @@ final class GatewayServer {
         self.json(response, translated)
       }.resume()
     }
+  }
+
+  private func handleGrokOAuthResponses(
+    chatBody: [String: Any],
+    requestedModel: String,
+    provider: ProviderConfig,
+    namespaceMap: [String: String],
+    stream: Bool,
+    response: HTTPResponse
+  ) {
+    DispatchQueue.global(qos: .userInitiated).async {
+      do {
+        let result = try GrokOAuthClient.forwardChat(
+          chatBody: chatBody,
+          baseURL: provider.base_url.isEmpty ? GrokOAuthClient.defaultBaseURL : provider.base_url
+        )
+        if result.isStream || stream {
+          self.emitChatSSEAsResponses(
+            chatSSE: String(data: result.data, encoding: .utf8) ?? "",
+            requestedModel: requestedModel,
+            namespaceMap: namespaceMap,
+            response: response
+          )
+        } else {
+          guard let payload = try? JSONSerialization.jsonObject(with: result.data) as? [String: Any] else {
+            self.json(response, GatewayServer.upstreamErrorPayload(status: 502, bodyPreview: "Invalid Grok OAuth JSON"), status: 502)
+            return
+          }
+          let translated = Translator.chatCompletionToResponse(
+            payload: payload,
+            requestedModel: requestedModel,
+            namespaceMap: namespaceMap
+          )
+          self.json(response, translated)
+        }
+      } catch let error as GrokOAuthClient.ClientError {
+        switch error {
+        case .auth(let message):
+          GatewayLog.error("Grok OAuth auth failed for \(requestedModel): \(message)")
+          self.json(response, [
+            "error": [
+              "message": message,
+              "type": "authentication_error",
+              "code": 401
+            ] as [String: Any]
+          ], status: 401)
+        case .upstream(let status, let detail):
+          GatewayLog.error("Grok OAuth upstream \(requestedModel) status=\(status) preview=\(detail)")
+          self.json(response, GatewayServer.upstreamErrorPayload(status: status, bodyPreview: detail), status: status >= 400 ? status : 502)
+        }
+      } catch {
+        GatewayLog.error("Grok OAuth failed for \(requestedModel): \(error.localizedDescription)")
+        self.json(response, ["error": error.localizedDescription], status: 502)
+      }
+    }
+  }
+
+  /// Feed OpenAI Chat Completions SSE through `ResponsesStreamState` (same as third-party stream).
+  private func emitChatSSEAsResponses(
+    chatSSE: String,
+    requestedModel: String,
+    namespaceMap: [String: String],
+    response: HTTPResponse
+  ) {
+    let state = ResponsesStreamState(model: requestedModel, namespaceMap: namespaceMap)
+    var events: [Data] = []
+    let write: ([String: Any]) -> Void = { payload in
+      if let d = try? JSONSerialization.data(withJSONObject: payload) {
+        events.append("data: ".data(using: .utf8)! + d + "\n\n".data(using: .utf8)!)
+      }
+    }
+    state.start(write: write)
+    for line in chatSSE.components(separatedBy: "\n") {
+      guard line.hasPrefix("data: "), line != "data: [DONE]" else { continue }
+      let jsonStr = String(line.dropFirst(6))
+      guard let d = jsonStr.data(using: .utf8),
+            let chunk = try? JSONSerialization.jsonObject(with: d) as? [String: Any] else { continue }
+      state.writeChatDelta(chunk, write: write)
+    }
+    state.finish(write: write)
+    let body = events.reduce(into: Data()) { $0.append($1) }
+    response.send(status: 200, headers: [
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive"
+    ], body: body)
   }
 
   private func streamThirdParty(urlRequest: URLRequest, requestedModel: String, namespaceMap: [String: String], response: HTTPResponse) {
@@ -243,6 +342,38 @@ final class GatewayServer {
     if let resolved = ModelCatalog.shared.resolveUpstream(slug: model) {
       var chat = body
       chat["model"] = resolved.upstreamModel
+
+      if resolved.provider.usesGrokOAuth {
+        DispatchQueue.global(qos: .userInitiated).async {
+          do {
+            let result = try GrokOAuthClient.forwardChat(
+              chatBody: chat,
+              baseURL: resolved.provider.base_url.isEmpty
+                ? GrokOAuthClient.defaultBaseURL
+                : resolved.provider.base_url
+            )
+            let contentType = result.isStream ? "text/event-stream" : "application/json"
+            response.send(status: result.status, headers: ["Content-Type": contentType], body: result.data)
+          } catch let error as GrokOAuthClient.ClientError {
+            switch error {
+            case .auth(let message):
+              self.json(response, [
+                "error": [
+                  "message": message,
+                  "type": "authentication_error",
+                  "code": 401
+                ] as [String: Any]
+              ], status: 401)
+            case .upstream(let status, let detail):
+              self.json(response, GatewayServer.upstreamErrorPayload(status: status, bodyPreview: detail), status: status >= 400 ? status : 502)
+            }
+          } catch {
+            self.json(response, ["error": error.localizedDescription], status: 502)
+          }
+        }
+        return
+      }
+
       var urlRequest = URLRequest(url: URL(string: "\(resolved.provider.base_url.trimmingCharacters(in: CharacterSet(charactersIn: "/")))/chat/completions")!)
       urlRequest.httpMethod = "POST"
       urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")

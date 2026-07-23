@@ -148,11 +148,96 @@ enum ProviderModelFetcher {
     return ClinePassCatalog.sortedAlphabetically(models)
   }
 
-  /// Fetches models for an installed provider, routing Cline Pass to its live catalog.
+  /// Fetches models for an installed provider, routing Cline Pass / Grok OAuth to their catalogs.
   static func fetch(for provider: ProviderConfig) async throws -> [FetchedModel] {
+    if provider.usesGrokOAuth
+      || ProviderPreset.matching(providerID: provider.name)?.supportsGrokOAuthModelCatalog == true {
+      return try await fetchGrokOAuthModels(baseURL: provider.base_url)
+    }
     if ProviderPreset.matching(providerID: provider.name)?.supportsLiveCatalogRefresh == true {
       return try await fetchClinePassRecommended()
     }
     return try await fetch(baseURL: provider.base_url, apiKey: provider.api_key)
+  }
+
+  /// Grok CLI OAuth catalog: `GET {base}/models-v2` with session from `~/.grok/auth.json`.
+  static func fetchGrokOAuthModels(
+    baseURL: String = GrokOAuthClient.defaultBaseURL,
+    ensureToken: (_ force: Bool) throws -> String = { try GrokOAuthSession.ensureFreshAccessToken(force: $0) },
+    perform: (URLRequest) async throws -> (Data, URLResponse) = { try await URLSession.shared.data(for: $0) }
+  ) async throws -> [FetchedModel] {
+    let url = GrokOAuthClient.modelsV2URL(baseURL: baseURL.isEmpty ? GrokOAuthClient.defaultBaseURL : baseURL)
+
+    func makeRequest(token: String) -> URLRequest {
+      var request = URLRequest(url: url)
+      request.timeoutInterval = 20
+      for (key, value) in GrokOAuthClient.catalogHeaders(accessToken: token) {
+        request.setValue(value, forHTTPHeaderField: key)
+      }
+      return request
+    }
+
+    let token: String
+    do {
+      token = try ensureToken(false)
+    } catch {
+      throw FetchError.unauthorized
+    }
+
+    var data: Data
+    var response: URLResponse
+    do {
+      (data, response) = try await perform(makeRequest(token: token))
+    } catch {
+      throw FetchError.transport(error.localizedDescription)
+    }
+
+    var status = (response as? HTTPURLResponse)?.statusCode ?? 0
+    if status == 401 {
+      let refreshed: String
+      do {
+        refreshed = try ensureToken(true)
+      } catch {
+        throw FetchError.unauthorized
+      }
+      do {
+        (data, response) = try await perform(makeRequest(token: refreshed))
+      } catch {
+        throw FetchError.transport(error.localizedDescription)
+      }
+      status = (response as? HTTPURLResponse)?.statusCode ?? 0
+    }
+
+    if status == 401 || status == 403 { throw FetchError.unauthorized }
+    guard (200..<300).contains(status) else { throw FetchError.http(status) }
+
+    guard let models = parseGrokOAuthModels(data) else { throw FetchError.decode }
+    guard !models.isEmpty else { throw FetchError.empty }
+    return models
+  }
+
+  /// Parses OpenAI-style `models-v2` payloads; prefers the catalog `name` for display labels.
+  static func parseGrokOAuthModels(_ data: Data) -> [FetchedModel]? {
+    guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+          let list = object["data"] as? [Any] else {
+      return parse(data)
+    }
+
+    var seen = Set<String>()
+    var models: [FetchedModel] = []
+    for item in list {
+      guard let entry = item as? [String: Any] else { continue }
+      let identifier = (entry["id"] as? String)
+        ?? (entry["model"] as? String)
+      guard let id = identifier?.trimmingCharacters(in: .whitespacesAndNewlines), !id.isEmpty else {
+        continue
+      }
+      guard seen.insert(id).inserted else { continue }
+      let name = (entry["name"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+      let ownedBy = (name?.isEmpty == false ? name : nil)
+        ?? (entry["owned_by"] as? String)
+      models.append(FetchedModel(id: id, ownedBy: ownedBy))
+    }
+    return models.sorted { $0.id.localizedCaseInsensitiveCompare($1.id) == .orderedAscending }
   }
 }
