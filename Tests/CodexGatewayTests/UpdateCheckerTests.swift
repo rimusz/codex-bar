@@ -93,4 +93,42 @@ final class UpdateCheckerTests: XCTestCase {
             "v0.1.10"
         )
     }
+
+    func testPreferredNotarizedReleasePicksNewestAcrossRepos() {
+        let older = UpdateChecker.GitHubReleaseSummary(
+            tagName: "v0.1.6",
+            name: "v0.1.6 (Notarized)",
+            body: nil,
+            htmlURL: URL(string: "https://github.com/rimusz/codex-bar/releases/tag/v0.1.6")!,
+            publishedAt: Date().addingTimeInterval(-86_400),
+            draft: false,
+            assets: []
+        )
+        let newer = UpdateChecker.GitHubReleaseSummary(
+            tagName: "v0.1.8",
+            name: "v0.1.8 (Notarized)",
+            body: nil,
+            htmlURL: URL(string: "https://github.com/rimusz/codex-gateway/releases/tag/v0.1.8")!,
+            publishedAt: Date(),
+            draft: false,
+            assets: []
+        )
+        let unsigned = UpdateChecker.GitHubReleaseSummary(
+            tagName: "v0.1.9",
+            name: "v0.1.9 (Unsigned)",
+            body: nil,
+            htmlURL: URL(string: "https://example.com/unsigned")!,
+            publishedAt: Date(),
+            draft: false,
+            assets: []
+        )
+
+        XCTAssertEqual(
+            UpdateChecker.preferredNotarizedRelease(from: [older, unsigned, newer])?.tagName,
+            "v0.1.8"
+        )
+        XCTAssertEqual(UpdateChecker.releasesRepo, "rimusz/codex-gateway")
+        XCTAssertEqual(UpdateChecker.legacyReleasesRepo, "rimusz/codex-bar")
+        XCTAssertEqual(UpdateChecker.releasesRepos, ["rimusz/codex-gateway", "rimusz/codex-bar"])
+    }
 }

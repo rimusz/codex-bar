@@ -13,7 +13,7 @@ SwiftPM macOS menu-bar app with embedded gateway for Codex Desktop.
 - Version: `VERSION` file → `AppVersion.display`.
 - Build: `make run`, `make test`, `make app`, `make release` (see `BUILDING.md`).
 - Full reference: `ARCHITECTURE.md`, agent entry: `AGENTS.md`.
-- GitHub repo: `rimusz/codex-bar` (unchanged).
+- GitHub repo: `rimusz/codex-gateway` (legacy `rimusz/codex-bar` redirects; updater queries both)
 
 ## Identity
 

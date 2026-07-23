@@ -19,7 +19,7 @@ CodexGateway is a **menu-bar macOS app** (AppKit) that runs an embedded **gatewa
 
 **Platform:** macOS 26+. **Version:** `AppVersion.display` prefers packaged `CFBundleShortVersionString` (from `VERSION` at build time), then falls back to the repo `VERSION` file for unpackaged `swift build` / tests. **Build:** SwiftPM only — no Xcode project; use `make` / `swift build`.
 
-**GitHub repo:** `rimusz/codex-bar` (unchanged).
+**GitHub repo:** `rimusz/codex-gateway` (legacy redirects from `rimusz/codex-bar`).
 
 ### Identity
 
@@ -65,7 +65,7 @@ Older CodexBar install helpers `ditto` without deleting first, so Launch Service
 ## Repository layout
 
 ```
-codex-bar/                        # GitHub repo name (unchanged)
+codex-gateway/                    # GitHub repo (`rimusz/codex-gateway`; legacy `rimusz/codex-bar` redirects)
 ├── CodexGateway/                 # Main app target (AppKit)
 │   ├── main.swift                # NSApplication entry (.accessory)
 │   ├── AppDelegate.swift         # Gateway start/stop, status bar
@@ -144,12 +144,12 @@ End-user setup (Zero TUI, CLI `zero exec`, provider profile, troubleshooting): *
 
 ## In-app updates
 
-CodexGateway checks `https://api.github.com/repos/rimusz/codex-bar/releases` for the newest **notarized** release (title/body marker). Unsigned releases are ignored for one-click install.
+CodexGateway checks `https://api.github.com/repos/rimusz/codex-gateway/releases` (and falls back to `rimusz/codex-bar`) for the newest **notarized** release (title/body marker). Unsigned releases are ignored for one-click install.
 
 | Component | Role |
 |-----------|------|
 | `UpdateScheduler` | Launch + daily background check (30s delay, 24h interval) |
-| `UpdateChecker` | GitHub API, semver compare, asset `CodexGateway-{tag}.app.zip` (falls back to legacy `CodexBar-{tag}.app.zip`) |
+| `UpdateChecker` | GitHub API (`rimusz/codex-gateway` + legacy `rimusz/codex-bar`), semver compare, asset `CodexGateway-{tag}.app.zip` (falls back to legacy `CodexBar-{tag}.app.zip`) |
 | `AppUpdater` | Download, codesign/spctl verify, install via `codexgateway-install-update` helper; migrates `CodexBar.app` → `CodexGateway.app` |
 | `UpdatePanel` | Menu **Check for Updates…** / **Upgrade Available…** (⌘U); primary action is a system default button (**Update App** → download/verify → **Install and Restart**, or **Open Release Page** when the notarized release has no `.app.zip`). Panel height is measured from the content chain (including the button stack) so actions are not clipped. |
 | `UpdatePanelModel` | Pure UI decisions (install button vs open release page; skip vs notify) |

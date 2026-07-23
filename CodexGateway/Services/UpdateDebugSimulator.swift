@@ -34,7 +34,7 @@ enum UpdateDebugSimulator {
       installedVersion: AppVersion.short,
       latestVersion: simulatedAppVersion,
       tagName: "v\(simulatedAppVersion)",
-      releaseURL: URL(string: "https://github.com/rimusz/codex-bar/releases/latest")!,
+      releaseURL: URL(string: "https://github.com/rimusz/codex-gateway/releases/latest")!,
       // Non-nil so canInstallInApp is true without relying solely on forceCanInstallInApp.
       downloadURL: URL(string: "https://example.com/CodexGateway-v\(simulatedAppVersion).app.zip"),
       publishedAt: Date(),

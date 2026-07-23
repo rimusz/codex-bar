@@ -3,7 +3,11 @@ import Foundation
 enum UpdateChecker {
   static let appName = AppIdentity.productName
   static let legacyAppName = AppIdentity.legacyProductName
-  static let releasesRepo = "rimusz/codex-bar"
+  /// Canonical GitHub repo after rename from `codex-bar`.
+  static let releasesRepo = "rimusz/codex-gateway"
+  /// Pre-rename repo; GitHub redirects, but we still query both so older clients and mid-migration checks work.
+  static let legacyReleasesRepo = "rimusz/codex-bar"
+  static let releasesRepos = [releasesRepo, legacyReleasesRepo]
 
   struct AppRelease: Sendable {
     let installedVersion: String
@@ -105,6 +109,15 @@ enum UpdateChecker {
     releases.first(where: isNotarizedRelease)
   }
 
+  /// Picks the newest notarized release by semver when candidates come from multiple repos.
+  static func preferredNotarizedRelease(from candidates: [GitHubReleaseSummary]) -> GitHubReleaseSummary? {
+    let notarized = candidates.filter(isNotarizedRelease)
+    guard !notarized.isEmpty else { return nil }
+    return notarized.max { lhs, rhs in
+      compareVersions(normalizedVersion(lhs.tagName), normalizedVersion(rhs.tagName)) == .orderedAscending
+    }
+  }
+
   static func preferredAppZipAssetName(tagName: String, appName: String = UpdateChecker.appName) -> String {
     "\(appName)-\(tagName).app.zip"
   }
@@ -120,7 +133,33 @@ enum UpdateChecker {
   }
 
   private static func fetchLatestNotarizedAppRelease() async throws -> GitHubReleaseSummary {
-    let url = URL(string: "https://api.github.com/repos/\(releasesRepo)/releases?per_page=30")!
+    var lastError: Error?
+    var candidates: [GitHubReleaseSummary] = []
+
+    for repo in releasesRepos {
+      do {
+        let summaries = try await fetchReleaseSummaries(from: repo)
+        if let latest = latestNotarizedRelease(from: summaries) {
+          candidates.append(latest)
+        }
+      } catch {
+        lastError = error
+      }
+    }
+
+    if let preferred = preferredNotarizedRelease(from: candidates) {
+      return preferred
+    }
+
+    throw lastError ?? NSError(
+      domain: "CodexGatewayUpdates",
+      code: 3,
+      userInfo: [NSLocalizedDescriptionKey: "No notarized CodexGateway release was found on GitHub."]
+    )
+  }
+
+  private static func fetchReleaseSummaries(from repo: String) async throws -> [GitHubReleaseSummary] {
+    let url = URL(string: "https://api.github.com/repos/\(repo)/releases?per_page=30")!
     var request = URLRequest(url: url)
     request.timeoutInterval = 12
     request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
@@ -133,20 +172,12 @@ enum UpdateChecker {
       throw NSError(
         domain: "CodexGatewayUpdates",
         code: 1,
-        userInfo: [NSLocalizedDescriptionKey: "Could not fetch CodexGateway releases from GitHub."]
+        userInfo: [NSLocalizedDescriptionKey: "Could not fetch CodexGateway releases from GitHub (\(repo))."]
       )
     }
 
     let releases = try decoder.decode([GitHubRelease].self, from: data)
-    let summaries = releases.map(\.summary)
-    guard let latest = latestNotarizedRelease(from: summaries) else {
-      throw NSError(
-        domain: "CodexGatewayUpdates",
-        code: 3,
-        userInfo: [NSLocalizedDescriptionKey: "No notarized CodexGateway release was found on GitHub."]
-      )
-    }
-    return latest
+    return releases.map(\.summary)
   }
 
   static func normalizedVersion(_ value: String) -> String {

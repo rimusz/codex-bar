@@ -51,7 +51,7 @@ gh release create "v{VERSION}" --title "v{VERSION} (Notarized)" \
 - App bundle: `dist/CodexGateway.app`, executable `CodexGateway`
 - DMG: `dist/CodexGateway-macOS.dmg`
 - Release zips: `CodexGateway-{tag}.app.zip` + legacy `CodexBar-{tag}.app.zip`
-- GitHub repo: `rimusz/codex-bar` (unchanged)
+- GitHub repo: `rimusz/codex-gateway` (legacy `rimusz/codex-bar` redirects; updater queries both)
 - Scripts: `scripts/build-macos-app.sh`, `scripts/codesign-app-bundle.sh`, `scripts/notarize.sh`, `scripts/codexgateway-install-update.sh`
 
 ### Upgrade / legacy (from CodexBar)

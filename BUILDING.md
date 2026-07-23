@@ -50,7 +50,7 @@ GitHub release assets use versioned names, e.g. `CodexGateway-v1.0.0.app.zip`, l
 | Bundle ID | `com.rimusz.CodexGateway` |
 | Config dir | `~/.codexgateway` |
 | Install helper | `Contents/Resources/codexgateway-install-update` |
-| GitHub repo | `rimusz/codex-bar` |
+| GitHub repo | `rimusz/codex-gateway` (legacy `rimusz/codex-bar` redirects) |
 
 ### Upgrade / legacy (from CodexBar)
 

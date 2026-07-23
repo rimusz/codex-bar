@@ -50,7 +50,7 @@ Codex Desktop          Codex CLI
 
 ## Install
 
-Download the latest `.dmg` from [Releases](https://github.com/rimusz/codex-bar/releases), or build from source:
+Download the latest `.dmg` from [Releases](https://github.com/rimusz/codex-gateway/releases), or build from source:
 
 ```bash
 make run            # build + launch the menu bar app
@@ -66,7 +66,7 @@ See [BUILDING.md](BUILDING.md) for packaging, code signing, notarization, and pu
 
 Existing installs upgrade smoothly:
 
-- **Install the new app** from [Releases](https://github.com/rimusz/codex-bar/releases) or use **Check for Updates…** in the menu bar (in-app update works from notarized CodexBar builds too).
+- **Install the new app** from [Releases](https://github.com/rimusz/codex-gateway/releases) or use **Check for Updates…** in the menu bar (in-app update works from notarized CodexBar builds too).
 - **Your settings are kept** — providers, models, and keys migrate from `~/.codexbar` to `~/.codexgateway` on first launch; no re-configuration needed.
 - **Bundle ID changed** to `com.rimusz.CodexGateway` — macOS treats this as a new app. If you had **Open at Login** enabled, turn it on again from the menu bar after upgrading.
 - **Codex config is updated** — the managed block in `~/.codex/config.toml` is rewritten from `codexbar` → `codexgateway` on **Update Gateway Config** or when an existing managed block is refreshed automatically.
